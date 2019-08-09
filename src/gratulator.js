@@ -2,7 +2,7 @@ const path = require('path')
 const puppeteer = require('puppeteer')
 var fs = require('fs')
 
-const debug = true
+const debug = false
 
 class Gratulator {
   constructor(logger) {

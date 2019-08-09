@@ -7,7 +7,7 @@ class FbBirthdayGratulatorCommand extends Command {
     // const name = flags.name || 'world'
     // this.log(`hello ${name} from ./src/index.js`)
     const gratulator = new Gratulator(this)
-    gratulator.sendWishes()
+    await gratulator.sendWishes()
   }
 }
 
