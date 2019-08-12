@@ -2,10 +2,9 @@ const path = require('path')
 const puppeteer = require('puppeteer')
 var fs = require('fs')
 
-const debug = true
-
 class Gratulator {
-  constructor(logger) {
+  constructor(logger, debug = false) {
+    this.debug = debug
     this.logger = logger
     this.BIRTHDAY_URL = 'https://www.facebook.com/events/birthdays/'
     this.LOGIN_URL = 'https://www.facebook.com/login'
@@ -112,12 +111,12 @@ class Gratulator {
 
   async startDriver() {
     const browser = await puppeteer.launch({
-      headless: !debug,
+      headless: !this.debug,
       userDataDir: './user_data',
     })
     this.driver = await browser.newPage()
-    if (debug) {
-      this.driver.setViewport({ width: 0, height: 0 })
+    if (this.debug) {
+      this.driver.setViewport({width: 0, height: 0})
     }
     await this.driver.goto(this.BIRTHDAY_URL)
   }
