@@ -1,4 +1,4 @@
-const { Command, flags } = require('@oclif/command')
+const {Command, flags} = require('@oclif/command')
 const Gratulator = require('./gratulator')
 
 class FbBirthdayGratulatorCommand extends Command {
@@ -7,7 +7,11 @@ class FbBirthdayGratulatorCommand extends Command {
     // const name = flags.name || 'world'
     // this.log(`hello ${name} from ./src/index.js`)
     const gratulator = new Gratulator(this)
-    await gratulator.sendWishes()
+    // try {
+      await gratulator.sendWishes()
+    // } catch (error) {
+    //   this.error('Failed congratulation', error)
+    // }
   }
 }
 
@@ -18,9 +22,9 @@ Extra documentation goes here
 
 FbBirthdayGratulatorCommand.flags = {
   // add --version flag to show CLI version
-  version: flags.version({ char: 'v' }),
+  version: flags.version({char: 'v'}),
   // add --help flag to show CLI version
-  help: flags.help({ char: 'h' }),
+  help: flags.help({char: 'h'}),
   // name: flags.string({char: 'n', description: 'name to print'}),
 }
 

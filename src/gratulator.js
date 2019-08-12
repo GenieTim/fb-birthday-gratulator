@@ -2,7 +2,7 @@ const path = require('path')
 const puppeteer = require('puppeteer')
 var fs = require('fs')
 
-const debug = false
+const debug = true
 
 class Gratulator {
   constructor(logger) {
@@ -26,9 +26,14 @@ class Gratulator {
       this.logger.warn('Did not find today card.')
       return
     }
-    let birthdayDiv = await divs.$x('..')
+    let birthdayDiv = (await divs.$x('..'))[0]
 
-    let textAreas = await birthdayDiv.$$('textArea')
+    if (!(birthdayDiv)) {
+      this.logger.error('Failed to go one step up.')
+      return
+    }
+    let textAreas = await birthdayDiv.$$('textarea')
+
     let users = []
     try {
       users = await birthdayDiv.$x('//a[@data-hovercard]')
@@ -41,12 +46,18 @@ class Gratulator {
       return this.driver.close()
     }
 
+    if (users.length !== textAreas.length) {
+      this.logger.warn('Did not find enough usernames. Will skip personalized messages...')
+    }
+
     for (const [index, a] of textAreas.entries()) {
       let user = null
       if (users.length === textAreas.length) {
         user = users[index]
       }
-      await a.type(this.getWish(user))
+      let wish = await this.getWish(user)
+      this.logger.log('Congratulating "' + user + '" with "' + wish + '"')
+      await a.type(wish)
       await this.driver.keyboard.press('Enter')
       await this.randomSleep()
       this.logger.log('Congratulated "' + user + '"')
@@ -94,7 +105,7 @@ class Gratulator {
         }
       }
     } else {
-      this.logger.log("Have been redirected to '' from login. Assuming logged in.", this.driver.current_url)
+      this.logger.log("Have been redirected to '%s' from login. Assuming logged in.", this.driver.url())
     }
     await this.driver.goto(this.BIRTHDAY_URL)
   }
