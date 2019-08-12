@@ -61,6 +61,8 @@ class Gratulator {
       await this.randomSleep()
       this.logger.log('Congratulated "' + user + '"')
     }
+
+    this.driver.close()
   }
 
   async getWish(username) {
