@@ -63,7 +63,7 @@ class Gratulator {
     }
 
     // loop friends & wish them all the best
-    for (const [index, a] of textAreas.entries()) {
+    for await (const [index, a] of textAreas.entries()) {
       let user = null
       if (users.length === textAreas.length) {
         user = users[index]
@@ -154,7 +154,7 @@ class Gratulator {
       return
     }
     if (this.debug) {
-      this.driver.setViewport({ width: 0, height: 0 })
+      this.driver.setViewport({width: 0, height: 0})
     }
     await this.driver.goto(this.BIRTHDAY_URL)
   }
