@@ -53,7 +53,7 @@ class Gratulator {
         users[index] = await this.driver.evaluate(element => element.textContent, a)
       }
     } catch (error) {
-      this.logger.warn('Did not find users names', error)
+      this.logger.warn('Did not find users names. Error: ' + JSON.stringify(error))
     }
 
     if (textAreas.length === 0) {

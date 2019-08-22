@@ -14,7 +14,7 @@
     "puppeteer": "^1.19.0"
   },
   "devDependencies": {
-    "eslint": "^5.13",
+    "eslint": "^6.2.1",
     "eslint-config-oclif": "^3.1"
   },
   "engines": {
@@ -28,7 +28,7 @@
   "keywords": [
     "oclif"
   ],
-  "license": "GPLv3",
+  "license": "GPL-3.0",
   "main": "src/index.js",
   "oclif": {
     "bin": "fb-gratulate"
