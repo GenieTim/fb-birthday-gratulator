@@ -49,11 +49,12 @@ class Gratulator {
     let users = []
     try {
       users = await birthdayDiv.$x('//div[@id="birthdays_today_card"]//parent::*//a[@data-hovercard]')
-      for await (const [index, a] of users) {
+      for await (const [index, a] of users.entries()) {
         users[index] = await this.driver.evaluate(element => element.textContent, a)
       }
     } catch (error) {
-      this.logger.warn('Did not find users names. Error: ' + JSON.stringify(error))
+      this.logger.error(error)
+      // this.logger.warn('Did not find users names. Error: ' + JSON.stringify(error))
     }
 
     if (textAreas.length === 0) {
