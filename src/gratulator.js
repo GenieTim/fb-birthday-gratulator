@@ -89,10 +89,14 @@ class Gratulator {
    * @param {string} username The name of the birthday kiddo
    */
   async getWish(username) {
+    let selection
+    // has the user a proprietary congratulation?
     if (username && Object.prototype.hasOwnProperty.call(this.config.wishes, username)) {
-      return this.config.wishes[username]
+      selection = this.config.wishes[username]
+    } else {
+      selection = this.config.wishes.anyone
     }
-    return this.config.wishes[Math.floor(Math.random() * this.config.wishes.length)]
+    return selection[Math.floor(Math.random() * selection.length)]
   }
 
   /**
@@ -158,7 +162,7 @@ class Gratulator {
       return
     }
     if (this.debug) {
-      this.driver.setViewport({width: 0, height: 0})
+      this.driver.setViewport({ width: 0, height: 0 })
     }
     await this.driver.goto(this.BIRTHDAY_URL)
   }
