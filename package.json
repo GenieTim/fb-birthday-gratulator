@@ -10,12 +10,12 @@
   "dependencies": {
     "@oclif/command": "^1.5.19",
     "@oclif/config": "^1",
-    "@oclif/plugin-help": "^2.2.2",
+    "@oclif/plugin-help": "^2.2.3",
     "puppeteer": "^2.0.0"
   },
   "devDependencies": {
     "@oclif/dev-cli": "^1",
-    "eslint": "^6.7.2",
+    "eslint": "^6.8.0",
     "eslint-config-oclif": "^3.1"
   },
   "engines": {
