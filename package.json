@@ -27,7 +27,9 @@
   ],
   "homepage": "https://github.com/GenieTim/fb-birthday-gratulator",
   "keywords": [
-    "oclif"
+    "automation",
+    "facebook",
+    "birthday"
   ],
   "license": "GPL-3.0",
   "main": "src/index.js",
