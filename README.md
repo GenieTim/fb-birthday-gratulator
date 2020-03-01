@@ -1,7 +1,7 @@
 fb-birthday-gratulator
 ======================
 
-Facebook Auto Post Birthday Message
+Automatically post birthday messages to the Facebook profile wall of your friends.
 
 [![oclif](https://img.shields.io/badge/cli-oclif-brightgreen.svg)](https://oclif.io)
 [![Version](https://img.shields.io/npm/v/fb-birthday-gratulator.svg)](https://npmjs.org/package/fb-birthday-gratulator)
