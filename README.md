@@ -20,9 +20,13 @@ Automatically post birthday messages to the Facebook profile wall of your friend
 
 ## Installation
 
+Use git's tag v1.0.0 for the old, the tag v2.0.0 for the new Facebook design. 
+Note that you need to set the language of Facebook to English 
+for this to work out of the box.
+
 ### Via Repo (recommended as tested)
 Download this repository, unpack it. Make sure you have [Node.js](https://nodejs.org/en/) installed. 
-Then, from the root of this repo/directory, run `yarn install` (make sure to have yarn installed) to run
+Then, from the root of this repo/directory, run `yarn install` (make sure to have yarn installed) to run.
 
 ### Via NPM/yarn (untested)
 Install this repo like:

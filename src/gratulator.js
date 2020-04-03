@@ -21,7 +21,7 @@ class Gratulator {
     }
     this.config = JSON.parse(fs.readFileSync(configFilePath, 'utf8'))
     if (!this.config.username || !this.config.password || !this.config.wishes) {
-      this.logger.error(util.format('Config file "%s" does not contain keys "username", "password" or "wishes".', configFilePath))
+      this.logger.error(util.format('Config file "%s" does not contain keys "username", "password" and "wishes".', configFilePath))
     }
   }
 
@@ -32,24 +32,25 @@ class Gratulator {
     // startup
     await this.login()
     // get list of all birthdaying friends
-    let divs = await this.getBirthdayList()
+    let divs = (await this.getBirthdayList())[0]
     if (!divs) {
       this.logger.warn('Did not find today card.')
       return
     }
-    let birthdayDiv = (await divs.$x('..'))[0]
+    let birthdayDiv = (await divs.$$('div'))[1]
 
     if (!(birthdayDiv)) {
       this.logger.error('Failed to go one step up.')
       return
     }
-    let textAreas = await birthdayDiv.$$('textarea')
+    let textAreas = await birthdayDiv.$$('div[role="textbox"]')
 
     // try to fetch the usernames – fails sometimes. TODO: investigate
     let users = []
     try {
-      users = await birthdayDiv.$x('//div[@id="birthdays_today_card"]//parent::*//a[@data-hovercard]')
-      for await (const [index, a] of users.entries()) {
+      users = await birthdayDiv.$$('div a h3')
+      for (let index = 0; index < users.length; ++index) {
+        let a = users[index]
         users[index] = await this.driver.evaluate(element => element.textContent, a)
       }
     } catch (error) {
@@ -103,16 +104,27 @@ class Gratulator {
    * Get the list with all the birthday kids
    */
   async getBirthdayList() {
+    await this.driver.goto(this.BIRTHDAY_URL)
+    await this.randomSleep()
     if (this.driver.url() !== this.BIRTHDAY_URL) {
       await this.driver.goto('https://www.facebook.com/events')
       await this.randomSleep()
       // Facebook has a strange way of redirection: opening https://www.facebook.com/events/birthdays
       // redirects to something ? acontext = { someObject }.That URL is the one indicated when hovering the
       // sidebar button.Clicking the side bar button leads in the browser to / events / birthdays.WTF.
-      await this.driver.click("#entity_sidebar [data-key='birthdays'] a")
+
+      // await sleep(100000)
+      try {
+        await this.driver.click('div[role="navigation"] a[href="/events/birthdays/?acontext=%7B%22event_action_history%22%3A[]%7D"]')
+      } catch (error) {
+        this.logger.error(error)
+        await sleep(100000)
+      }
       await this.randomSleep()
     }
-    return this.driver.$('#birthdays_today_card')
+    // unfortunately, in new facebook, we need to go via text hints, as
+    // class names are not reliable
+    return this.driver.$x('//div[div[h3[text() = "Today\'s birthdays"]]]')
   }
 
   /**
@@ -144,7 +156,6 @@ class Gratulator {
     } else {
       this.logger.log(util.format("Have been redirected to '%s' from login. Assuming logged in.", this.driver.url()))
     }
-    await this.driver.goto(this.BIRTHDAY_URL)
   }
 
   /**
