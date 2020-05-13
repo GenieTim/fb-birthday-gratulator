@@ -48,9 +48,10 @@ class Gratulator {
     // try to fetch the usernames – fails sometimes. TODO: investigate
     let users = []
     try {
-      users = await birthdayDiv.$$('div a h3')
+      users = this.findUsernames(birthdayDiv)
       for (let index = 0; index < users.length; ++index) {
         let a = users[index]
+        // eslint-disable-next-line no-await-in-loop
         users[index] = await this.driver.evaluate(element => element.textContent, a)
       }
     } catch (error) {
@@ -82,6 +83,14 @@ class Gratulator {
     }
 
     return this.driver.close()
+  }
+
+  async findUsernames(birthdayDiv) {
+    let users = await birthdayDiv.$$('div a h3')
+    if (users.length === 0) {
+      users = await birthdayDiv.$$('div a h2')
+    }
+    return users
   }
 
   /**
@@ -124,7 +133,7 @@ class Gratulator {
     }
     // unfortunately, in new facebook, we need to go via text hints, as
     // class names are not reliable
-    return this.driver.$x('//div[div[h3[text() = "Today\'s birthdays"]]]')
+    return this.driver.$x('//div[div[*[self::h1 or self::h2 or self::h3][text() = "Today\'s birthdays"]]]')
   }
 
   /**
@@ -173,7 +182,7 @@ class Gratulator {
       return
     }
     if (this.debug) {
-      this.driver.setViewport({ width: 0, height: 0 })
+      this.driver.setViewport({width: 0, height: 0})
     }
     await this.driver.goto(this.BIRTHDAY_URL)
   }
