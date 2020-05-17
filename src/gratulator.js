@@ -48,7 +48,7 @@ class Gratulator {
     // try to fetch the usernames – fails sometimes. TODO: investigate
     let users = []
     try {
-      users = this.findUsernames(birthdayDiv)
+      users = await this.findUsernames(birthdayDiv)
       for (let index = 0; index < users.length; ++index) {
         let a = users[index]
         // eslint-disable-next-line no-await-in-loop
@@ -85,6 +85,11 @@ class Gratulator {
     return this.driver.close()
   }
 
+  /**
+   * Find the titles containing the names of today's birthday kids
+   * 
+   * @param {ElementHandle} birthdayDiv the div of today's birthdays
+   */
   async findUsernames(birthdayDiv) {
     let users = await birthdayDiv.$$('div a h3')
     if (users.length === 0) {
@@ -182,7 +187,7 @@ class Gratulator {
       return
     }
     if (this.debug) {
-      this.driver.setViewport({width: 0, height: 0})
+      this.driver.setViewport({ width: 0, height: 0 })
     }
     await this.driver.goto(this.BIRTHDAY_URL)
   }
