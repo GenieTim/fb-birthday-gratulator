@@ -87,7 +87,7 @@ class Gratulator {
 
   /**
    * Find the titles containing the names of today's birthday kids
-   * 
+   *
    * @param {ElementHandle} birthdayDiv the div of today's birthdays
    */
   async findUsernames(birthdayDiv) {
