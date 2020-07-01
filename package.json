@@ -11,6 +11,8 @@
     "@oclif/command": "^1.6.1",
     "@oclif/config": "^1.15.1",
     "@oclif/plugin-help": "^3.1.0",
+    "cli-ux": "^5.4.7",
+    "launch-editor": "^2.2.1",
     "puppeteer": "^4.0.0"
   },
   "devDependencies": {
@@ -23,6 +25,8 @@
   },
   "files": [
     "/bin",
+    "/npm-shrinkwrap.json",
+    "/oclif.manifest.json",
     "/src"
   ],
   "homepage": "https://github.com/GenieTim/fb-birthday-gratulator",
@@ -34,11 +38,18 @@
   "license": "GPL-3.0",
   "main": "src/index.js",
   "oclif": {
-    "bin": "fb-gratulate"
+    "commands": "./src/commands",
+    "bin": "fb-gratulate",
+    "plugins": [
+      "@oclif/plugin-help"
+    ]
   },
   "repository": "GenieTim/fb-birthday-gratulator",
   "scripts": {
+    "postpack": "rm -f oclif.manifest.json",
     "posttest": "eslint .",
-    "test": "echo NO TESTS"
+    "prepack": "oclif-dev manifest && oclif-dev readme",
+    "test": "echo NO TESTS",
+    "version": "oclif-dev readme && git add README.md"
   }
 }

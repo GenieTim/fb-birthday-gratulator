@@ -9,13 +9,7 @@ Automatically post birthday messages to the Facebook profile wall of your friend
 [![License](https://img.shields.io/npm/l/fb-birthday-gratulator.svg)](https://github.com/GenieTim/fb-birthday-gratulator/blob/master/package.json)
 
 <!-- toc -->
-- [fb-birthday-gratulator](#fb-birthday-gratulator)
-  - [Installation](#installation)
-    - [Via Repo (recommended as tested)](#via-repo-recommended-as-tested)
-    - [Via NPM/yarn (untested)](#via-npmyarn-untested)
-  - [Configuration](#configuration)
-  - [Usage](#usage)
-  - [Automation](#automation)
+
 <!-- tocstop -->
 
 ## Installation
@@ -60,16 +54,79 @@ Note that at the moment, the config is not getting validated in any useful form 
 <!-- usage -->
 ```sh-session
 $ npm install -g fb-birthday-gratulator
-$ fb-gratulate
+$ fb-gratulate COMMAND
 running command...
 $ fb-gratulate (-v|--version|version)
-fb-birthday-gratulator/0.0.0 darwin-x64 node-v13.2.0
-$ fb-gratulate --help
+fb-birthday-gratulator/2.0.1 darwin-x64 node-v12.18.1
+$ fb-gratulate --help [COMMAND]
 USAGE
-  $ fb-gratulate
+  $ fb-gratulate COMMAND
 ...
 ```
 <!-- usagestop -->
+
+## Commands
+<!-- commands -->
+* [`fb-gratulate config`](#fb-gratulate-config)
+* [`fb-gratulate congratulate`](#fb-gratulate-congratulate)
+* [`fb-gratulate help [COMMAND]`](#fb-gratulate-help-command)
+
+## `fb-gratulate config`
+
+Generate or edit a config - interactively
+
+```
+USAGE
+  $ fb-gratulate config
+
+DESCRIPTION
+  ...
+  This command lets you create a new config if none exists interactively 
+  or opens lazily an editor to let you edit the existing config.
+```
+
+_See code: [src/commands/config.js](https://github.com/GenieTim/fb-birthday-gratulator/blob/v2.0.1/src/commands/config.js)_
+
+## `fb-gratulate congratulate`
+
+Congratulate all todays birthday friends
+
+```
+USAGE
+  $ fb-gratulate congratulate
+
+OPTIONS
+  -d, --debug
+  -h, --help     show CLI help
+  -v, --version  show CLI version
+
+DESCRIPTION
+  ...
+  Note that you require a config as described [here](https://github.com/GenieTim/fb-birthday-gratulator#configuration)
+
+ALIASES
+  $ fb-gratulate gratulate
+```
+
+_See code: [src/commands/congratulate.js](https://github.com/GenieTim/fb-birthday-gratulator/blob/v2.0.1/src/commands/congratulate.js)_
+
+## `fb-gratulate help [COMMAND]`
+
+display help for fb-gratulate
+
+```
+USAGE
+  $ fb-gratulate help [COMMAND]
+
+ARGUMENTS
+  COMMAND  command to show help for
+
+OPTIONS
+  --all  see all commands in CLI
+```
+
+_See code: [@oclif/plugin-help](https://github.com/oclif/plugin-help/blob/v3.1.0/src/commands/help.ts)_
+<!-- commandsstop -->
 
 ## Automation
 Use a separate program, such as a [cron](https://help.ubuntu.com/community/CronHowto), to execute this utility daily.
