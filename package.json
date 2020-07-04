@@ -1,7 +1,7 @@
 {
   "name": "fb-birthday-gratulator",
   "description": "Facebook Auto Post Birthday Message",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "author": "Tim Bernhard @GenieTim",
   "bin": {
     "fb-gratulate": "./bin/run"
