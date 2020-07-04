@@ -13,7 +13,7 @@ class FbBirthdayGratulatorCommand extends Command {
     if (!fs.existsSync(configFilePath)) {
       configFilePath = path.join(this.config.configDir, 'config.json')
       if (!fs.existsSync(configFilePath)) {
-        this.logger.error(util.format('Config file "%s" does not exist.', configFilePath))
+        this.warn(util.format('Config file "%s" does not exist.', configFilePath))
         this.error(new Error('Config file not found'), {exit: 1})
       }
     }
