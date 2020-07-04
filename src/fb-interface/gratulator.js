@@ -15,6 +15,7 @@ class Gratulator {
     this.logger = logger
     this.BIRTHDAY_URL = 'https://www.facebook.com/events/birthdays/'
     this.LOGIN_URL = 'https://www.facebook.com/login'
+    this.logger.log('Using config file: ' + configFilePath)
     this.config = JSON.parse(fs.readFileSync(configFilePath, 'utf8'))
     if (!this.config.username || !this.config.password || !this.config.wishes) {
       this.logger.error(util.format('Config file "%s" does not contain keys "username", "password" and "wishes".', configFilePath))
@@ -158,7 +159,7 @@ class Gratulator {
       await this.randomSleep()
       if (this.driver.url().startsWith(this.LOGIN_URL)) {
         if (rep) {
-          throw new Error('Failed login.')
+          throw new Error('Failed login. After two attempts, URL is still ' + this.driver.url())
         } else {
           await this.login(true)
         }
