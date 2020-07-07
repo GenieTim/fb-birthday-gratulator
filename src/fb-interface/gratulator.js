@@ -149,7 +149,14 @@ class Gratulator {
     if (!this.driver) {
       await this.startDriver()
     }
-    await this.driver.goto(this.LOGIN_URL)
+    try {
+      await this.driver.goto(this.LOGIN_URL)
+    } catch (e) {
+      this.logger.warn("Failed to go to login page. Am on " + this.driver.url())
+      const screenShotPath = path.join('/', __dirname, '../../login-nav-error.png')
+      await this.driver.screenshot({ path: screenShotPath, fullPage: true })
+      throw new Error('Failed navigating to login. URL is still ' + this.driver.url() + '. Took screenshot to ' + screenShotPath)
+    }
     if (this.driver.url().startsWith(this.LOGIN_URL)) {
       await this.randomSleep(1000)
       await this.driver.fill('input[name=email]', this.config.username)
@@ -167,6 +174,7 @@ class Gratulator {
       if (this.driver.url().startsWith(this.LOGIN_URL)) {
         if (rep > 2) {
           // failed login even after second try.
+          this.logger.log("Failed logging in after three attempts. Page is " + this.driver.url())
           const screenShotPath = path.join('/', __dirname, '../../login-error.png')
           await this.driver.screenshot({ path: screenShotPath, fullPage: true })
           throw new Error('Failed login. After three attempts, URL is still ' + this.driver.url() + '. Took screenshot to ' + screenShotPath)
