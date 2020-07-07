@@ -13,7 +13,8 @@
     "@oclif/plugin-help": "^3.1.0",
     "cli-ux": "^5.4.9",
     "launch-editor": "^2.2.1",
-    "puppeteer": "^5.0.0"
+    "playwright": "^1.2.0",
+    "playwright-addons": "Niek/playwright-addons#master"
   },
   "devDependencies": {
     "@oclif/dev-cli": "^1",

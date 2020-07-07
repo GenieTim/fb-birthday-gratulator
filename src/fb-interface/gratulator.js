@@ -1,5 +1,7 @@
-const puppeteer = require('puppeteer')
-var fs = require('fs')
+const playwright = require('playwright');
+// other dependencies
+const fs = require('fs')
+const path = require('path')
 const util = require('util')
 
 class Gratulator {
@@ -135,31 +137,39 @@ class Gratulator {
     }
     // unfortunately, in new facebook, we need to go via text hints, as
     // class names are not reliable
-    return this.driver.$x('//div[div[*[self::h1 or self::h2 or self::h3][text() = "Today\'s birthdays"]]]')
+    return this.driver.$$('xpath=//div[div[*[self::h1 or self::h2 or self::h3][text() = "Today\'s birthdays"]]]')
   }
 
   /**
    * Log in to facebook – try twice because we can
    *
-   * @param {boolean} rep whether this is the first (false) or second attempt (true)
+   * @param {int} rep how many attempts where taken to log in
    */
-  async login(rep = false) {
+  async login(rep = 0) {
     if (!this.driver) {
       await this.startDriver()
     }
     await this.driver.goto(this.LOGIN_URL)
     if (this.driver.url().startsWith(this.LOGIN_URL)) {
       await this.randomSleep(1000)
-      await this.driver.type('input[name=email]', this.config.username)
+      await this.driver.fill('input[name=email]', this.config.username)
       await this.randomSleep(100)
-      await this.driver.type('input[name=pass]', this.config.password)
+      await this.driver.fill('input[name=pass]', this.config.password)
       await this.randomSleep(500)
-      await this.driver.$eval('form', form => form.submit())
+      // two methods to submit form – just try them each
+      if (rep < 2) {
+        await this.driver.click('[type="submit"]')
+      } else {
+        await this.driver.$eval('form', form => form.submit())
+      }
       // sleep is so important, you know?
       await this.randomSleep()
       if (this.driver.url().startsWith(this.LOGIN_URL)) {
-        if (rep) {
-          throw new Error('Failed login. After two attempts, URL is still ' + this.driver.url())
+        if (rep > 2) {
+          // failed login even after second try.
+          const screenShotPath = path.join('/', __dirname, '../../login-error.png')
+          await this.driver.screenshot({ path: screenShotPath, fullPage: true })
+          throw new Error('Failed login. After three attempts, URL is still ' + this.driver.url() + '. Took screenshot to ' + screenShotPath)
         } else {
           await this.login(true)
         }
@@ -173,18 +183,24 @@ class Gratulator {
    * Start the Puppeteer browser
    */
   async startDriver() {
-    const browser = await puppeteer.launch({
+    const browser = await playwright[this.config.browserType ? this.config.browserType : 'chromium']
+    const context = await browser.launchPersistentContext('./user_data', {
       headless: !this.debug,
-      userDataDir: './user_data',
+      timeout: 60000
     })
+    // const context = await browser.newContext()
     try {
-      this.driver = await browser.newPage()
+      this.driver = await context.newPage()
     } catch (error) {
       this.logger.error(error)
       return
     }
+    // block possible tracking scripts to reduce overhead
+    const addons = await import('playwright-addons');
+    await addons.adblocker(context)
+    await addons.stealth(context)
     if (this.debug) {
-      this.driver.setViewport({width: 0, height: 0})
+      this.driver.setViewportSize({ width: 1240, height: 980 })
     }
     await this.driver.goto(this.BIRTHDAY_URL)
   }
