@@ -15,6 +15,10 @@ Automatically post birthday messages to the Facebook profile wall of your friend
 ## Installation
 
 Use git's tag v1.0.0 for the old, the tag v2.0.0 for the new Facebook design. 
+The tag v3.0.0 and up is for a new execution method including a `config` command.
+Up of v4.0.0, you will also have additional config possibilities and [pptr](https://pptr.dev/) was 
+changed for [playwright](https://github.com/microsoft/playwright).
+
 Note that you need to set the language of Facebook to English 
 for this to work out of the box.
 
@@ -57,7 +61,7 @@ $ npm install -g fb-birthday-gratulator
 $ fb-gratulate COMMAND
 running command...
 $ fb-gratulate (-v|--version|version)
-fb-birthday-gratulator/3.0.1 darwin-x64 node-v12.18.1
+fb-birthday-gratulator/4.0.0 darwin-x64 node-v12.18.1
 $ fb-gratulate --help [COMMAND]
 USAGE
   $ fb-gratulate COMMAND
@@ -85,7 +89,7 @@ DESCRIPTION
   or opens lazily an editor to let you edit the existing config.
 ```
 
-_See code: [src/commands/config.js](https://github.com/GenieTim/fb-birthday-gratulator/blob/v3.0.1/src/commands/config.js)_
+_See code: [src/commands/config.js](https://github.com/GenieTim/fb-birthday-gratulator/blob/v4.0.0/src/commands/config.js)_
 
 ## `fb-gratulate congratulate`
 
@@ -108,7 +112,7 @@ ALIASES
   $ fb-gratulate gratulate
 ```
 
-_See code: [src/commands/congratulate.js](https://github.com/GenieTim/fb-birthday-gratulator/blob/v3.0.1/src/commands/congratulate.js)_
+_See code: [src/commands/congratulate.js](https://github.com/GenieTim/fb-birthday-gratulator/blob/v4.0.0/src/commands/congratulate.js)_
 
 ## `fb-gratulate help [COMMAND]`
 
