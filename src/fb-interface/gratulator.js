@@ -1,4 +1,4 @@
-const playwright = require('playwright');
+const playwright = require('playwright')
 // other dependencies
 const fs = require('fs')
 const path = require('path')
@@ -30,6 +30,10 @@ class Gratulator {
   async sendWishes() {
     // startup
     await this.login()
+    if (this.debug) {
+      this.logger.debug('Logged in. Fetching todays birthdays...')
+    }
+
     // get list of all birthdaying friends
     let divs = (await this.getBirthdayList())[0]
     if (!divs) {
@@ -117,8 +121,10 @@ class Gratulator {
    * Get the list with all the birthday kids
    */
   async getBirthdayList() {
-    await this.driver.goto(this.BIRTHDAY_URL)
-    await this.randomSleep()
+    if (this.driver.url() !== this.BIRTHDAY_URL) {
+      await this.driver.goto(this.BIRTHDAY_URL)
+      await this.randomSleep()
+    }
     if (this.driver.url() !== this.BIRTHDAY_URL) {
       await this.driver.goto('https://www.facebook.com/events')
       await this.randomSleep()
@@ -151,10 +157,11 @@ class Gratulator {
     }
     try {
       await this.driver.goto(this.LOGIN_URL)
-    } catch (e) {
-      this.logger.warn("Failed to go to login page. Am on " + this.driver.url())
+    } catch (error) {
+      this.logger.warn('Failed to go to login page. Am on ' + this.driver.url())
       const screenShotPath = path.join('/', __dirname, '../../login-nav-error.png')
       await this.driver.screenshot({ path: screenShotPath, fullPage: true })
+      this.logger.error(error)
       throw new Error('Failed navigating to login. URL is still ' + this.driver.url() + '. Took screenshot to ' + screenShotPath)
     }
     if (this.driver.url().startsWith(this.LOGIN_URL)) {
@@ -174,7 +181,7 @@ class Gratulator {
       if (this.driver.url().startsWith(this.LOGIN_URL)) {
         if (rep > 2) {
           // failed login even after second try.
-          this.logger.log("Failed logging in after three attempts. Page is " + this.driver.url())
+          this.logger.log('Failed logging in after three attempts. Page is ' + this.driver.url())
           const screenShotPath = path.join('/', __dirname, '../../login-error.png')
           await this.driver.screenshot({ path: screenShotPath, fullPage: true })
           throw new Error('Failed login. After three attempts, URL is still ' + this.driver.url() + '. Took screenshot to ' + screenShotPath)
@@ -191,22 +198,29 @@ class Gratulator {
    * Start the Puppeteer browser
    */
   async startDriver() {
-    const browser = await playwright[this.config.browserType ? this.config.browserType : 'chromium']
-    const context = await browser.launchPersistentContext('./user_data', {
-      headless: !this.debug,
-      timeout: 60000
-    })
-    // const context = await browser.newContext()
+    const browserType = await playwright[this.config.browserType ? this.config.browserType : 'chromium']
+    let context
+    let browser
+    if (this.config.persistent) {
+      context = await browserType.launchPersistentContext('./user_data', {
+        headless: !this.debug,
+        timeout: 60000,
+      })
+    } else {
+      browser = await browserType.launch()
+      context = await browser.newContext()
+      // block possible tracking scripts to reduce overhead
+      const addons = await import('playwright-addons');
+      await addons.adblocker(browser)
+      await addons.stealth(browser)
+    }
+    
     try {
       this.driver = await context.newPage()
     } catch (error) {
       this.logger.error(error)
       return
     }
-    // block possible tracking scripts to reduce overhead
-    const addons = await import('playwright-addons');
-    await addons.adblocker(context)
-    await addons.stealth(context)
     if (this.debug) {
       this.driver.setViewportSize({ width: 1240, height: 980 })
     }
