@@ -61,7 +61,7 @@ $ npm install -g fb-birthday-gratulator
 $ fb-gratulate COMMAND
 running command...
 $ fb-gratulate (-v|--version|version)
-fb-birthday-gratulator/4.0.1 darwin-x64 node-v12.18.1
+fb-birthday-gratulator/4.0.2 darwin-x64 node-v12.18.1
 $ fb-gratulate --help [COMMAND]
 USAGE
   $ fb-gratulate COMMAND
@@ -89,7 +89,7 @@ DESCRIPTION
   or opens lazily an editor to let you edit the existing config.
 ```
 
-_See code: [src/commands/config.js](https://github.com/GenieTim/fb-birthday-gratulator/blob/v4.0.1/src/commands/config.js)_
+_See code: [src/commands/config.js](https://github.com/GenieTim/fb-birthday-gratulator/blob/v4.0.2/src/commands/config.js)_
 
 ## `fb-gratulate congratulate`
 
@@ -112,7 +112,7 @@ ALIASES
   $ fb-gratulate gratulate
 ```
 
-_See code: [src/commands/congratulate.js](https://github.com/GenieTim/fb-birthday-gratulator/blob/v4.0.1/src/commands/congratulate.js)_
+_See code: [src/commands/congratulate.js](https://github.com/GenieTim/fb-birthday-gratulator/blob/v4.0.2/src/commands/congratulate.js)_
 
 ## `fb-gratulate help [COMMAND]`
 
