@@ -107,6 +107,7 @@ class Gratulator {
    * @param {string} username The name of the birthday kiddo
    */
   async getWish(username) {
+    username = username.replace(/\s\s+/g, ' ')
     let selection
     // has the user a proprietary congratulation?
     if (username && Object.prototype.hasOwnProperty.call(this.config.wishes, username)) {
@@ -214,7 +215,7 @@ class Gratulator {
       await addons.adblocker(browser)
       await addons.stealth(browser)
     }
-    
+
     try {
       this.driver = await context.newPage()
     } catch (error) {
