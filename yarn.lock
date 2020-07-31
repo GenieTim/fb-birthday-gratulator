@@ -233,9 +233,9 @@
   integrity sha1-wFTor02d11205jq8dviFFocU1LM=
 
 "@types/firefox-webext-browser@^78.0.0":
-  version "78.0.0"
-  resolved "https://registry.yarnpkg.com/@types/firefox-webext-browser/-/firefox-webext-browser-78.0.0.tgz#9f175355beb3824dce8d5811e59585fba84dca6b"
-  integrity sha512-ExCtjncdA1ITEjEitvtjGcXslGPA/ZMxOxzMGfpLHZ6ZJAAx6itQi+ZEctgPFN6uPW4lSJalSsEC+lAz0Wkz9A==
+  version "78.0.1"
+  resolved "https://registry.yarnpkg.com/@types/firefox-webext-browser/-/firefox-webext-browser-78.0.1.tgz#9c3b929c65a8263facac03ab930b0fb0f8addfbb"
+  integrity sha512-0d7oiI9K6Y4efP4Crl3JB88zYl7vaRdLtumqz8v6axMF8RCnK0NaGUjL4DnyQ7GLPo98b+s0BSRalaxAXgvPAQ==
 
 "@types/glob@^7.1.1":
   version "7.1.3"
@@ -256,9 +256,9 @@
   integrity sha512-tHq6qdbT9U1IRSGf14CL0pUlULksvY9OZ+5eEgl1N7t+OA3tGvNpxJCzuKQlsNgCVwbAs670L1vcVQi8j9HjnA==
 
 "@types/node@*":
-  version "14.0.26"
-  resolved "https://registry.yarnpkg.com/@types/node/-/node-14.0.26.tgz#22a3b8a46510da8944b67bfc27df02c34a35331c"
-  integrity sha512-W+fpe5s91FBGE0pEa0lnqGLL4USgpLgs4nokw16SrBBco/gQxuua7KnArSEOd5iaMqbbSHV10vUDkJYJJqpXKA==
+  version "14.0.27"
+  resolved "https://registry.yarnpkg.com/@types/node/-/node-14.0.27.tgz#a151873af5a5e851b51b3b065c9e63390a9e0eb1"
+  integrity sha512-kVrqXhbclHNHGu9ztnAwSncIgJv/FaxmzXJvGXNdcCpV1b8u1/Mi6z6m0vwy0LzKeXFTPLH0NzwmoJ3fNCIq0g==
 
 "@types/yauzl@^2.9.1":
   version "2.9.1"
@@ -2000,17 +2000,17 @@ text-table@^0.2.0:
   resolved "https://registry.yarnpkg.com/text-table/-/text-table-0.2.0.tgz#7f5ee823ae805207c00af2df4a84ec3fcfa570b4"
   integrity sha1-f17oI66AUgfACvLfSoTsP8+lcLQ=
 
-tldts-core@^5.6.43:
-  version "5.6.43"
-  resolved "https://registry.yarnpkg.com/tldts-core/-/tldts-core-5.6.43.tgz#2458337de405d6b618a8f719a675ce460847ef66"
-  integrity sha512-FoHZekmnALXrSeFKFdtP/8LorSPIZgvODX4FaTqGWBkCp0UXdN5wIn9vgqSVN9SYwcuPmj5GOOMz7af4oX+2lg==
+tldts-core@^5.6.45:
+  version "5.6.45"
+  resolved "https://registry.yarnpkg.com/tldts-core/-/tldts-core-5.6.45.tgz#1cb0ffa4793107a04ff9a47a44669e16a33be37d"
+  integrity sha512-TjAdLNBK7uKkELyRxiW2itwmA0cvHSOla8cWYOfLGlUTlWVaoqCVHNCc5GllrcuNlmJYRAS/XVwFT1gwyd+2yA==
 
 tldts-experimental@^5.6.21:
-  version "5.6.43"
-  resolved "https://registry.yarnpkg.com/tldts-experimental/-/tldts-experimental-5.6.43.tgz#4fbcee0fc227292ace9f23aab803619ed655c81d"
-  integrity sha512-gP5a4QMr3qSQfPndwglmLSHxarc3jvrxV79yKx0j/8L3Ja+yDvO3urAVU0Ch69ZwI4NFsrpkQtFR2ClQcjD2qQ==
+  version "5.6.45"
+  resolved "https://registry.yarnpkg.com/tldts-experimental/-/tldts-experimental-5.6.45.tgz#0ccb39ca86cfe6ec31f9a5f563568b972502ff2e"
+  integrity sha512-/5Lb9tluthHhslvCd3tOE/3YrEGs6kgWDrOdpGWbMu6j8f3bHMSgf79R/3q3i7HYCcW94mJZGj41G0Gc1bXQKw==
   dependencies:
-    tldts-core "^5.6.43"
+    tldts-core "^5.6.45"
 
 tmp@^0.1.0:
   version "0.1.0"
