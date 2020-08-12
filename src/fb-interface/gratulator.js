@@ -14,6 +14,9 @@ class Gratulator {
    */
   constructor(logger, configFilePath, debug = false) {
     this.debug = debug
+    if (debug) {
+      logger.log("Debug mode on.")
+    }
     this.logger = logger
     this.BIRTHDAY_URL = 'https://www.facebook.com/events/birthdays/'
     this.LOGIN_URL = 'https://www.facebook.com/login'
@@ -144,7 +147,12 @@ class Gratulator {
     }
     // unfortunately, in new facebook, we need to go via text hints, as
     // class names are not reliable
-    return this.driver.$$('xpath=//div[div[*[self::h1 or self::h2 or self::h3][text() = "Today\'s birthdays"]]]')
+    let test = await this.driver.$$('xpath=//div[div[*[self::h1 or self::h2 or self::h3][text() = "Today\'s birthdays"]]]')
+    if (test.length == 0) {
+      // they change the markup way too often. Maybe it looks like this, this time?
+      return this.driver.$$('xpath=//div[div[*[self::h1 or self::h2 or self::h3]/*[text() = "Today\'s birthdays"]]]')
+    }
+    return test
   }
 
   /**
@@ -208,7 +216,9 @@ class Gratulator {
         timeout: 60000,
       })
     } else {
-      browser = await browserType.launch()
+      browser = await browserType.launch({
+        headless: !this.debug
+      })
       context = await browser.newContext()
       // block possible tracking scripts to reduce overhead
       const addons = await import('playwright-addons');
