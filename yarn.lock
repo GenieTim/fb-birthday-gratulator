@@ -256,9 +256,9 @@
   integrity sha512-tHq6qdbT9U1IRSGf14CL0pUlULksvY9OZ+5eEgl1N7t+OA3tGvNpxJCzuKQlsNgCVwbAs670L1vcVQi8j9HjnA==
 
 "@types/node@*":
-  version "14.0.27"
-  resolved "https://registry.yarnpkg.com/@types/node/-/node-14.0.27.tgz#a151873af5a5e851b51b3b065c9e63390a9e0eb1"
-  integrity sha512-kVrqXhbclHNHGu9ztnAwSncIgJv/FaxmzXJvGXNdcCpV1b8u1/Mi6z6m0vwy0LzKeXFTPLH0NzwmoJ3fNCIq0g==
+  version "14.6.0"
+  resolved "https://registry.yarnpkg.com/@types/node/-/node-14.6.0.tgz#7d4411bf5157339337d7cff864d9ff45f177b499"
+  integrity sha512-mikldZQitV94akrc4sCcSjtJfsTKt4p+e/s0AGscVA6XArQ9kFclP+ZiYUMnq987rc6QlYxXv/EivqlfSLxpKA==
 
 "@types/yauzl@^2.9.1":
   version "2.9.1"
@@ -1981,17 +1981,17 @@ text-table@^0.2.0:
   resolved "https://registry.yarnpkg.com/text-table/-/text-table-0.2.0.tgz#7f5ee823ae805207c00af2df4a84ec3fcfa570b4"
   integrity sha1-f17oI66AUgfACvLfSoTsP8+lcLQ=
 
-tldts-core@^5.6.49:
-  version "5.6.49"
-  resolved "https://registry.yarnpkg.com/tldts-core/-/tldts-core-5.6.49.tgz#76ab9431011e830103abf365187867b878528784"
-  integrity sha512-9icKAk6oYwx+3kHyzZRSXCfJ13P46WtyV9n99SDU9bjbO7C6Ptl09YYzEzrS9BuAqyV2Dae+LCkYmKmZRzHemw==
+tldts-core@^5.6.50:
+  version "5.6.50"
+  resolved "https://registry.yarnpkg.com/tldts-core/-/tldts-core-5.6.50.tgz#720a15768fa55e6faa3b7631f30f4fe818a4dc4b"
+  integrity sha512-TXL3BSfnsGe04qCctKQf3Qtb/uujbWhNAkEwIxUSafW4a2+hE0PndixqActIWHttelnzgKdzKcXCklZeNnKzZA==
 
 tldts-experimental@^5.6.21:
-  version "5.6.49"
-  resolved "https://registry.yarnpkg.com/tldts-experimental/-/tldts-experimental-5.6.49.tgz#320b8b95b09f8b050e6b327385838531bf5b0801"
-  integrity sha512-x7ufv6C849ZYo3sKAuomqnnsG6mwpAIMOUkrPCBLfYSYEV508EzeJoaoCU1jRJk3qrqBkyb9tXWnNR28lfvAxA==
+  version "5.6.50"
+  resolved "https://registry.yarnpkg.com/tldts-experimental/-/tldts-experimental-5.6.50.tgz#2144f46acb6d9968addb8d09b884f188bfaf8a62"
+  integrity sha512-2bF8fyAUGE3d/KH5oD8s8YzDgms1hGitestAVNFVx/Yo/munVqUFHHyZFVvke1j8G89jM5+Cnd4vSJopOSpJdQ==
   dependencies:
-    tldts-core "^5.6.49"
+    tldts-core "^5.6.50"
 
 tmp@^0.1.0:
   version "0.1.0"
