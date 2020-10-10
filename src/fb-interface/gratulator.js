@@ -88,7 +88,7 @@ class Gratulator {
       this.logger.log(util.format('Success: Congratulated "%s"', user))
     }
 
-    return this.driver.close()
+    return;// this.driver.close()
   }
 
   /**
@@ -174,6 +174,7 @@ class Gratulator {
       throw new Error('Failed navigating to login. URL is still ' + this.driver.url() + '. Took screenshot to ' + screenShotPath)
     }
     if (this.driver.url().startsWith(this.LOGIN_URL)) {
+      await this.acceptCookies()
       await this.randomSleep(1000)
       await this.driver.fill('input[name=email]', this.config.username)
       await this.randomSleep(100)
@@ -181,7 +182,7 @@ class Gratulator {
       await this.randomSleep(500)
       // two methods to submit form – just try them each
       if (rep < 2) {
-        await this.driver.click('[type="submit"]')
+        await this.driver.click('css=[type="submit"]')
       } else {
         await this.driver.$eval('form', form => form.submit())
       }
@@ -200,6 +201,22 @@ class Gratulator {
       }
     } else {
       this.logger.log(util.format("Have been redirected to '%s' from login. Assuming logged in.", this.driver.url()))
+    }
+  }
+
+  async acceptCookies() {
+    await this.randomSleep(1000)
+    // check if there is a cookie notice we have to get rid of
+    let cookieBtnSelector = "css=[data-cookiebanner='accept_button']";
+    try {
+      this.driver.waitForSelector(cookieBtnSelector, { timeout: 5000 })
+      try {
+        await this.driver.click(cookieBtnSelector)
+      } catch (error) {
+        console.warn("Could not get rid of cookie notification: " + error)
+      }
+    } catch (error) {
+      console.log("The cookie accept button was not found.")
     }
   }
 
