@@ -38,17 +38,18 @@ class Gratulator {
     }
 
     // get list of all birthdaying friends
-    let divs = (await this.getBirthdayList())[0]
-    if (!divs) {
+    let birthdayTitleDiv = (await this.getBirthdayList())[0]
+    if (!birthdayTitleDiv) {
       this.logger.warn('Did not find today card.')
       return
     }
-    let birthdayDiv = (await divs.$$('div'))[1]
-
-    if (!(birthdayDiv)) {
-      this.logger.error('Failed to go one step up.')
-      return
+    let birthdayDivs = (await birthdayTitleDiv.$$('xpath=../div'))
+    while (birthdayDivs.length == 1) {
+      // step up until we find two divs next to each other.
+      birthdayDivs = (await birthdayDivs[0].$$('xpath=../../div'))
     }
+
+    let birthdayDiv = birthdayDivs[1]
     let textAreas = await birthdayDiv.$$('div[role="textbox"]')
 
     // try to fetch the usernames – fails sometimes. TODO: investigate
