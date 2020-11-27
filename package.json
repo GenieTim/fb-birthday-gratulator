@@ -13,12 +13,12 @@
     "@oclif/plugin-help": "^3.2.0",
     "cli-ux": "^5.5.1",
     "launch-editor": "^2.2.1",
-    "playwright": "^1.6.1",
+    "playwright": "^1.6.2",
     "playwright-addons": "Niek/playwright-addons#master"
   },
   "devDependencies": {
-    "@oclif/dev-cli": "^1.23.0",
-    "eslint": "^7.13.0",
+    "@oclif/dev-cli": "^1.24.1",
+    "eslint": "^7.14.0",
     "eslint-config-oclif": "^3.1"
   },
   "engines": {
