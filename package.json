@@ -17,8 +17,8 @@
     "playwright-addons": "Niek/playwright-addons#master"
   },
   "devDependencies": {
-    "@oclif/dev-cli": "^1.24.1",
-    "eslint": "^7.14.0",
+    "@oclif/dev-cli": "^1.26.0",
+    "eslint": "^7.15.0",
     "eslint-config-oclif": "^3.1"
   },
   "engines": {
