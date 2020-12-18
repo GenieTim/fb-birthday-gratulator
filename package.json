@@ -10,10 +10,10 @@
   "dependencies": {
     "@oclif/command": "^1.8.0",
     "@oclif/config": "^1.17.0",
-    "@oclif/plugin-help": "^3.2.0",
+    "@oclif/plugin-help": "^3.2.1",
     "cli-ux": "^5.5.1",
     "launch-editor": "^2.2.1",
-    "playwright": "^1.6.2",
+    "playwright": "^1.7.0",
     "playwright-addons": "Niek/playwright-addons#master"
   },
   "devDependencies": {
