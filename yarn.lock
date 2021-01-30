@@ -900,9 +900,9 @@ fast-levenshtein@^2.0.6:
   integrity sha1-PYpcZog6FqMMqGQ+hR8Zuqd5eRc=
 
 fastq@^1.6.0:
-  version "1.10.0"
-  resolved "https://registry.yarnpkg.com/fastq/-/fastq-1.10.0.tgz#74dbefccade964932cdf500473ef302719c652bb"
-  integrity sha512-NL2Qc5L3iQEsyYzweq7qfgy5OtXCmGzGvhElGEd/SoFWEMOEczNh5s5ocaF01HDetxz+p8ecjNPA6cZxxIHmzA==
+  version "1.10.1"
+  resolved "https://registry.yarnpkg.com/fastq/-/fastq-1.10.1.tgz#8b8f2ac8bf3632d67afcd65dac248d5fdc45385e"
+  integrity sha512-AWuv6Ery3pM+dY7LYS8YIaCiQvUaos9OB1RyNgaOWnaX+Tik7Onvcsf8x8c+YtDeT0maYLniBip2hox5KtEXXA==
   dependencies:
     reusify "^1.0.4"
 
@@ -1087,9 +1087,9 @@ has@^1.0.3:
     function-bind "^1.1.1"
 
 hosted-git-info@^3.0.6:
-  version "3.0.7"
-  resolved "https://registry.yarnpkg.com/hosted-git-info/-/hosted-git-info-3.0.7.tgz#a30727385ea85acfcee94e0aad9e368c792e036c"
-  integrity sha512-fWqc0IcuXs+BmE9orLDyVykAG9GJtGLGuZAAqgcckPgv5xad4AcXGIv8galtQvlwutxSlaMcdw7BUtq2EIvqCQ==
+  version "3.0.8"
+  resolved "https://registry.yarnpkg.com/hosted-git-info/-/hosted-git-info-3.0.8.tgz#6e35d4cc87af2c5f816e4cb9ce350ba87a3f370d"
+  integrity sha512-aXpmwoOhRBrw6X3j0h5RloK4x1OzsxMPyxqIHyNfSe2pypkVTZFpEiRoSipPEPlMrh0HW/XsjkJ5WgnCirpNUw==
   dependencies:
     lru-cache "^6.0.0"
 
@@ -2003,17 +2003,17 @@ text-table@^0.2.0:
   resolved "https://registry.yarnpkg.com/text-table/-/text-table-0.2.0.tgz#7f5ee823ae805207c00af2df4a84ec3fcfa570b4"
   integrity sha1-f17oI66AUgfACvLfSoTsP8+lcLQ=
 
-tldts-core@^5.7.1:
-  version "5.7.1"
-  resolved "https://registry.yarnpkg.com/tldts-core/-/tldts-core-5.7.1.tgz#b985df759380f025e6d5c834b92591abb45265d0"
-  integrity sha512-QB5vpjUTEJuv+IjN4K58cm0fDUrZMard4rujsgj6kWjThVeOHv2G9xvQfUYQhAkYVJllWfemhXa0J9bL+kc8Qg==
+tldts-core@^5.7.2:
+  version "5.7.2"
+  resolved "https://registry.yarnpkg.com/tldts-core/-/tldts-core-5.7.2.tgz#902b71211f1f61ca2e30653593c4bef6542a3f7f"
+  integrity sha512-lZyNJhui/CQbQ/NmDEpod8BvNRi28wBofotWLK3WudJETZcridgzIikHbGedVhBr1MBvq+ZVO3EmFwe1XfqpVg==
 
 tldts-experimental@^5.6.21:
-  version "5.7.1"
-  resolved "https://registry.yarnpkg.com/tldts-experimental/-/tldts-experimental-5.7.1.tgz#00b0bcb47598d72ec25b28b174ecf7ff105cf419"
-  integrity sha512-p484c3LePuT4W71pQetC5OKi7QX+wV9BwqCuS2v77vlSb11KjM4BqgYjjZV+3UPnfgko8aElyGvfzihGE59FZw==
+  version "5.7.2"
+  resolved "https://registry.yarnpkg.com/tldts-experimental/-/tldts-experimental-5.7.2.tgz#191eff6103ff979a3926b18cde4d3a9111cfd6b5"
+  integrity sha512-l5Kr+85+K/BPD2sL9hXxQvZHdGAkfMin+jRhcuSUysgvhh6ku2u5RwYGjJjpZvXSWK9U2mlF4EHebjvegCgr5w==
   dependencies:
-    tldts-core "^5.7.1"
+    tldts-core "^5.7.2"
 
 tmp@^0.1.0:
   version "0.1.0"
