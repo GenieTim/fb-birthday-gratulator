@@ -7,6 +7,7 @@ Automatically post birthday messages to the Facebook profile wall of your friend
 [![Version](https://img.shields.io/npm/v/fb-birthday-gratulator.svg)](https://npmjs.org/package/fb-birthday-gratulator)
 [![Downloads/week](https://img.shields.io/npm/dw/fb-birthday-gratulator.svg)](https://npmjs.org/package/fb-birthday-gratulator)
 [![License](https://img.shields.io/npm/l/fb-birthday-gratulator.svg)](https://github.com/GenieTim/fb-birthday-gratulator/blob/master/package.json)
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2FGenieTim%2Ffb-birthday-gratulator.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2FGenieTim%2Ffb-birthday-gratulator?ref=badge_shield)
 
 <!-- toc -->
 
@@ -134,3 +135,7 @@ _See code: [@oclif/plugin-help](https://github.com/oclif/plugin-help/blob/v3.2.2
 
 ## Automation
 Use a separate program, such as a [cron](https://help.ubuntu.com/community/CronHowto), to execute this utility daily.
+
+
+## License
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2FGenieTim%2Ffb-birthday-gratulator.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2FGenieTim%2Ffb-birthday-gratulator?ref=badge_large)
