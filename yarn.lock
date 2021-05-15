@@ -270,9 +270,9 @@
   integrity sha512-1z8k4wzFnNjVK/tlxvrWuK5WMt6mydWWP7+zvH5eFep4oj+UkrfiJTRtjCeBXNpwaA/FYqqtb4/QS4ianFpIRA==
 
 "@types/node@*":
-  version "15.0.2"
-  resolved "https://registry.yarnpkg.com/@types/node/-/node-15.0.2.tgz#51e9c0920d1b45936ea04341aa3e2e58d339fb67"
-  integrity sha512-p68+a+KoxpoB47015IeYZYRrdqMUcpbK8re/zpFB8Ld46LHC1lPEbp3EXgkEhAYEcPvjJF6ZO+869SQ0aH1dcA==
+  version "15.3.0"
+  resolved "https://registry.yarnpkg.com/@types/node/-/node-15.3.0.tgz#d6fed7d6bc6854306da3dea1af9f874b00783e26"
+  integrity sha512-8/bnjSZD86ZfpBsDlCIkNXIvm+h6wi9g7IqL+kmFkQ+Wvu3JrasgLElfiPgoo8V8vVfnEi0QVS12gbl94h9YsQ==
 
 "@types/yauzl@^2.9.1":
   version "2.9.1"
@@ -309,9 +309,9 @@ ajv@^6.10.0, ajv@^6.12.4:
     uri-js "^4.2.2"
 
 ajv@^8.0.1:
-  version "8.3.0"
-  resolved "https://registry.yarnpkg.com/ajv/-/ajv-8.3.0.tgz#25ee7348e32cdc4a1dbb38256bf6bdc451dd577c"
-  integrity sha512-RYE7B5An83d7eWnDR8kbdaIFqmKCNsP16ay1hDbJEU+sa0e3H9SebskCt0Uufem6cfAVu7Col6ubcn/W+Sm8/Q==
+  version "8.4.0"
+  resolved "https://registry.yarnpkg.com/ajv/-/ajv-8.4.0.tgz#48984fdb2ce225cab15795f0772a8d85669075e4"
+  integrity sha512-7QD2l6+KBSLwf+7MuYocbWvRPdOu63/trReTLu2KFwkgctnub1auoF+Y1WYcm09CTM7quuscrzqmASaLHC/K4Q==
   dependencies:
     fast-deep-equal "^3.1.1"
     json-schema-traverse "^1.0.0"
@@ -2012,9 +2012,9 @@ supports-hyperlinks@^2.1.0:
     supports-color "^7.0.0"
 
 table@^6.0.4:
-  version "6.7.0"
-  resolved "https://registry.yarnpkg.com/table/-/table-6.7.0.tgz#26274751f0ee099c547f6cb91d3eff0d61d155b2"
-  integrity sha512-SAM+5p6V99gYiiy2gT5ArdzgM1dLDed0nkrWmG6Fry/bUS/m9x83BwpJUOf1Qj/x2qJd+thL6IkIx7qPGRxqBw==
+  version "6.7.1"
+  resolved "https://registry.yarnpkg.com/table/-/table-6.7.1.tgz#ee05592b7143831a8c94f3cee6aae4c1ccef33e2"
+  integrity sha512-ZGum47Yi6KOOFDE8m223td53ath2enHcYLgOCjGr5ngu8bdIARQk6mN/wRMv4yMRcHnCSnHbCEha4sobQx5yWg==
   dependencies:
     ajv "^8.0.1"
     lodash.clonedeep "^4.5.0"
@@ -2049,17 +2049,17 @@ text-table@^0.2.0:
   resolved "https://registry.yarnpkg.com/text-table/-/text-table-0.2.0.tgz#7f5ee823ae805207c00af2df4a84ec3fcfa570b4"
   integrity sha1-f17oI66AUgfACvLfSoTsP8+lcLQ=
 
-tldts-core@^5.7.34:
-  version "5.7.34"
-  resolved "https://registry.yarnpkg.com/tldts-core/-/tldts-core-5.7.34.tgz#93512e491974314b6a647de80b2641dfd0969a06"
-  integrity sha512-GEvVLkbxvGp2jX7L+LV0x2YlQF6dJfMts5zwwySv56d7l95+wzg6cKq+GgV04gBYPywi35V6B5r11uPX4l9Bug==
+tldts-core@^5.7.35:
+  version "5.7.35"
+  resolved "https://registry.yarnpkg.com/tldts-core/-/tldts-core-5.7.35.tgz#58bcb1a35dadae3727e46b39a0adb92f46ef7782"
+  integrity sha512-QBLLDnGzTOTDpbyEm6z7rnWljYPy5Q5ksSEpJpdFGixZK58aXwqTYSjH0d0WOGuNH+Od6H4gKK16D3BltpxMJw==
 
 tldts-experimental@^5.6.21:
-  version "5.7.34"
-  resolved "https://registry.yarnpkg.com/tldts-experimental/-/tldts-experimental-5.7.34.tgz#41826947ee323f16ab87330833ab5e28e5623454"
-  integrity sha512-kqMrYaVtYuyt9yxSYSD6bKMexWPoB+SpvSe8tSLke54lj4GrSCk2Ir4ndhSG24HelFVN32NnhXu32w+ExoyFRw==
+  version "5.7.35"
+  resolved "https://registry.yarnpkg.com/tldts-experimental/-/tldts-experimental-5.7.35.tgz#9cbc98e0c03d6777e8936fdbcd4ab5441ba2e085"
+  integrity sha512-PFB/TjsrdgYbK3U09K1T6urNvjKSfovkXBtZpVuGmmnv/Lt4V8UPy/ff2MAYtlEcAemdhJHZAg8z1AUfSdCzAg==
   dependencies:
-    tldts-core "^5.7.34"
+    tldts-core "^5.7.35"
 
 tmp@^0.1.0:
   version "0.1.0"
