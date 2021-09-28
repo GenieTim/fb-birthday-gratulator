@@ -62,7 +62,7 @@ $ npm install -g fb-birthday-gratulator
 $ fb-gratulate COMMAND
 running command...
 $ fb-gratulate (-v|--version|version)
-fb-birthday-gratulator/4.0.7 darwin-x64 node-v15.9.0
+fb-birthday-gratulator/4.0.8 darwin-x64 node-v16.10.0
 $ fb-gratulate --help [COMMAND]
 USAGE
   $ fb-gratulate COMMAND
@@ -90,7 +90,7 @@ DESCRIPTION
   or opens lazily an editor to let you edit the existing config.
 ```
 
-_See code: [src/commands/config.js](https://github.com/GenieTim/fb-birthday-gratulator/blob/v4.0.7/src/commands/config.js)_
+_See code: [src/commands/config.js](https://github.com/GenieTim/fb-birthday-gratulator/blob/v4.0.8/src/commands/config.js)_
 
 ## `fb-gratulate congratulate`
 
@@ -113,7 +113,7 @@ ALIASES
   $ fb-gratulate gratulate
 ```
 
-_See code: [src/commands/congratulate.js](https://github.com/GenieTim/fb-birthday-gratulator/blob/v4.0.7/src/commands/congratulate.js)_
+_See code: [src/commands/congratulate.js](https://github.com/GenieTim/fb-birthday-gratulator/blob/v4.0.8/src/commands/congratulate.js)_
 
 ## `fb-gratulate help [COMMAND]`
 
@@ -130,7 +130,7 @@ OPTIONS
   --all  see all commands in CLI
 ```
 
-_See code: [@oclif/plugin-help](https://github.com/oclif/plugin-help/blob/v3.2.2/src/commands/help.ts)_
+_See code: [@oclif/plugin-help](https://github.com/oclif/plugin-help/blob/v3.2.3/src/commands/help.ts)_
 <!-- commandsstop -->
 
 ## Automation
