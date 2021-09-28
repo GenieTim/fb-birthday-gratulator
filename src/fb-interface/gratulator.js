@@ -216,10 +216,10 @@ class Gratulator {
       try {
         await this.driver.click(cookieBtnSelector)
       } catch (error) {
-        console.warn("Could not get rid of cookie notification: " + error)
+        this.logger.warn("Could not get rid of cookie notification: " + error)
       }
     } catch (error) {
-      console.log("The cookie accept button was not found.")
+      this.logger.log("The cookie accept button was not found.")
     }
   }
 
