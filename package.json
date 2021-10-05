@@ -13,7 +13,7 @@
     "@oclif/plugin-help": "^3.2.3",
     "cli-ux": "^5.6.3",
     "launch-editor": "^2.2.1",
-    "playwright": "^1.14.1",
+    "playwright": "^1.15.1",
     "playwright-addons": "Niek/playwright-addons#master"
   },
   "devDependencies": {
@@ -51,6 +51,7 @@
     "posttest": "eslint .",
     "prepack": "oclif-dev manifest && oclif-dev readme",
     "test": "echo NO TESTS",
-    "version": "oclif-dev readme && git add README.md"
+    "version": "oclif-dev readme && git add README.md",
+    "fix": "eslint --fix ."
   }
 }

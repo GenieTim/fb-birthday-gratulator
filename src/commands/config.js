@@ -33,6 +33,7 @@ class ConfigCommand extends Command {
         wishes[anotherUser] = await this.askForWishes(newUser)
         anotherUser = await cli.confirm('Add specific wishes for another user? [y/n]')
       }
+
       config.wishes = wishes
       this.log(`Writing config file ${configFilePath}.`)
       this.warn('Please note that your password is not encrypted on this device – do not let anyone get near that config file.')

@@ -15,8 +15,9 @@ class Gratulator {
   constructor(logger, configFilePath, debug = false) {
     this.debug = debug
     if (debug) {
-      logger.log("Debug mode on.")
+      logger.log('Debug mode on.')
     }
+
     this.logger = logger
     this.BIRTHDAY_URL = 'https://www.facebook.com/events/birthdays/'
     this.LOGIN_URL = 'https://www.facebook.com/login'
@@ -43,9 +44,11 @@ class Gratulator {
       this.logger.warn('Did not find today card.')
       return
     }
+
     let birthdayDivs = (await birthdayTitleDiv.$$('xpath=../div'))
-    while (birthdayDivs.length == 1) {
+    while (birthdayDivs.length === 1) {
       // step up until we find two divs next to each other.
+      // eslint-disable-next-line no-await-in-loop
       birthdayDivs = (await birthdayDivs[0].$$('xpath=../../div'))
     }
 
@@ -81,6 +84,7 @@ class Gratulator {
       if (users.length === textAreas.length) {
         user = users[index]
       }
+
       let wish = await this.getWish(user)
       this.logger.log(util.format('Congratulating "%s" with "%s"', user, wish))
       await a.type(wish)
@@ -89,7 +93,7 @@ class Gratulator {
       this.logger.log(util.format('Success: Congratulated "%s"', user))
     }
 
-    return;// this.driver.close()
+    // this.driver.close()
   }
 
   /**
@@ -102,6 +106,7 @@ class Gratulator {
     if (users.length === 0) {
       users = await birthdayDiv.$$('div a h2')
     }
+
     return users
   }
 
@@ -114,13 +119,10 @@ class Gratulator {
     if (username) {
       username = username.replace(/\s\s+/g, ' ')
     }
+
     let selection
     // has the user a proprietary congratulation?
-    if (username && Object.prototype.hasOwnProperty.call(this.config.wishes, username)) {
-      selection = this.config.wishes[username]
-    } else {
-      selection = this.config.wishes.anyone
-    }
+    selection = username && Object.prototype.hasOwnProperty.call(this.config.wishes, username) ? this.config.wishes[username] : this.config.wishes.anyone
     return selection[Math.floor(Math.random() * selection.length)]
   }
 
@@ -132,6 +134,7 @@ class Gratulator {
       await this.driver.goto(this.BIRTHDAY_URL)
       await this.randomSleep()
     }
+
     if (this.driver.url() !== this.BIRTHDAY_URL) {
       await this.driver.goto('https://www.facebook.com/events')
       await this.randomSleep()
@@ -144,17 +147,20 @@ class Gratulator {
         await this.driver.click('div[role="navigation"] a[href="/events/birthdays/?acontext=%7B%22event_action_history%22%3A[]%7D"]')
       } catch (error) {
         this.logger.error(error)
-        await sleep(100000)
+        await sleep(100_000)
       }
+
       await this.randomSleep()
     }
+
     // unfortunately, in new facebook, we need to go via text hints, as
     // class names are not reliable
     let test = await this.driver.$$('xpath=//div[div[*[self::h1 or self::h2 or self::h3][text() = "Today\'s birthdays"]]]')
-    if (test.length == 0) {
+    if (test.length === 0) {
       // they change the markup way too often. Maybe it looks like this, this time?
       return this.driver.$$('xpath=//div[div[*[self::h1 or self::h2 or self::h3]/*[text() = "Today\'s birthdays"]]]')
     }
+
     return test
   }
 
@@ -167,15 +173,17 @@ class Gratulator {
     if (!this.driver) {
       await this.startDriver()
     }
+
     try {
       await this.driver.goto(this.LOGIN_URL)
     } catch (error) {
       this.logger.warn('Failed to go to login page. Am on ' + this.driver.url())
       const screenShotPath = path.join('/', __dirname, '../../login-nav-error.png')
-      await this.driver.screenshot({ path: screenShotPath, fullPage: true })
+      await this.driver.screenshot({path: screenShotPath, fullPage: true})
       this.logger.error(error)
       throw new Error('Failed navigating to login. URL is still ' + this.driver.url() + '. Took screenshot to ' + screenShotPath)
     }
+
     if (this.driver.url().startsWith(this.LOGIN_URL)) {
       await this.acceptCookies()
       await this.randomSleep(1000)
@@ -184,11 +192,7 @@ class Gratulator {
       await this.driver.fill('input[name=pass]', this.config.password)
       await this.randomSleep(500)
       // two methods to submit form – just try them each
-      if (rep < 2) {
-        await this.driver.click('css=[type="submit"]')
-      } else {
-        await this.driver.$eval('form', form => form.submit())
-      }
+      await (rep < 2 ? this.driver.click('css=[type="submit"]') : this.driver.$eval('form', form => form.submit()))
       // sleep is so important, you know?
       await this.randomSleep()
       if (this.driver.url().startsWith(this.LOGIN_URL)) {
@@ -196,7 +200,7 @@ class Gratulator {
           // failed login even after second try.
           this.logger.log('Failed logging in after three attempts. Page is ' + this.driver.url())
           const screenShotPath = path.join('/', __dirname, '../../login-error.png')
-          await this.driver.screenshot({ path: screenShotPath, fullPage: true })
+          await this.driver.screenshot({path: screenShotPath, fullPage: true})
           throw new Error('Failed login. After three attempts, URL is still ' + this.driver.url() + '. Took screenshot to ' + screenShotPath)
         } else {
           await this.login(true)
@@ -210,16 +214,16 @@ class Gratulator {
   async acceptCookies() {
     await this.randomSleep(1000)
     // check if there is a cookie notice we have to get rid of
-    let cookieBtnSelector = "css=[data-cookiebanner='accept_button']";
+    let cookieBtnSelector = "css=[data-cookiebanner='accept_button']"
     try {
-      this.driver.waitForSelector(cookieBtnSelector, { timeout: 5000 })
+      this.driver.waitForSelector(cookieBtnSelector, {timeout: 5000})
       try {
         await this.driver.click(cookieBtnSelector)
       } catch (error) {
-        this.logger.warn("Could not get rid of cookie notification: " + error)
+        this.logger.warn('Could not get rid of cookie notification: ' + error)
       }
-    } catch (error) {
-      this.logger.log("The cookie accept button was not found.")
+    } catch {
+      this.logger.log('The cookie accept button was not found.')
     }
   }
 
@@ -233,15 +237,15 @@ class Gratulator {
     if (this.config.persistent) {
       context = await browserType.launchPersistentContext('./user_data', {
         headless: !this.debug,
-        timeout: 60000,
+        timeout: 60_000,
       })
     } else {
       browser = await browserType.launch({
-        headless: !this.debug
+        headless: !this.debug,
       })
       context = await browser.newContext()
       // block possible tracking scripts to reduce overhead
-      const addons = await import('playwright-addons');
+      const addons = await import('playwright-addons')
       await addons.adblocker(browser)
       await addons.stealth(browser)
     }
@@ -252,9 +256,11 @@ class Gratulator {
       this.logger.error(error)
       return
     }
+
     if (this.debug) {
-      this.driver.setViewportSize({ width: 1240, height: 980 })
+      this.driver.setViewportSize({width: 1240, height: 980})
     }
+
     await this.driver.goto(this.BIRTHDAY_URL)
   }
 
@@ -263,7 +269,7 @@ class Gratulator {
    *
    * @param {double} maximum The maximum sleep time in milliseconds
    */
-  async randomSleep(maximum = 10000) {
+  async randomSleep(maximum = 10_000) {
     await sleep(maximum * Math.random())
   }
 }

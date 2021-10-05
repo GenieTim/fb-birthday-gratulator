@@ -17,12 +17,14 @@ class FbBirthdayGratulatorCommand extends Command {
         this.error(new Error('Config file not found'), {exit: 1})
       }
     }
+
     try {
       const gratulator = new Gratulator(this, configFilePath, flags.debug)
       await gratulator.sendWishes()
     } catch (error) {
       this.error(error, {exit: 2})
     }
+
     this.log('Success congratulating everyone.')
     this.exit(0)
   }
