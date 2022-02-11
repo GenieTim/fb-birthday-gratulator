@@ -10,7 +10,7 @@
   "dependencies": {
     "@oclif/command": "^1.8.16",
     "@oclif/config": "^1.18.3",
-    "@oclif/plugin-help": "^5.1.10",
+    "@oclif/plugin-help": "^5.1.11",
     "cli-ux": "^6.0.9",
     "launch-editor": "^2.3.0",
     "playwright": "^1.18.1",
