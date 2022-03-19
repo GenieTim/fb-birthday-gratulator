@@ -216,7 +216,7 @@ class Gratulator {
     // check if there is a cookie notice we have to get rid of
     let cookieBtnSelector = "css=[data-cookiebanner='accept_button']"
     try {
-      this.driver.waitForSelector(cookieBtnSelector, {timeout: 5000})
+      await this.driver.waitForSelector(cookieBtnSelector, {timeout: 5000})
       try {
         await this.driver.click(cookieBtnSelector)
       } catch (error) {
