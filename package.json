@@ -8,17 +8,17 @@
   },
   "bugs": "https://github.com/GenieTim/fb-birthday-gratulator/issues",
   "dependencies": {
-    "@oclif/command": "^1.8.24",
-    "@oclif/config": "^1.18.8",
-    "@oclif/plugin-help": "^5.2.9",
+    "@oclif/command": "^1.8.31",
+    "@oclif/config": "^1.18.12",
+    "@oclif/plugin-help": "^5.2.12",
     "cli-ux": "^6.0.9",
     "launch-editor": "^2.6.0",
-    "playwright": "^1.33.0",
+    "playwright": "^1.36.0",
     "playwright-addons": "Niek/playwright-addons#master"
   },
   "devDependencies": {
     "@oclif/dev-cli": "^1.26.10",
-    "eslint": "^8.39.0",
+    "eslint": "^8.44.0",
     "eslint-config-oclif": "^4.0"
   },
   "engines": {
