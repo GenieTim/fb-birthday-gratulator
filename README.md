@@ -61,8 +61,8 @@ Note that at the moment, the config is not getting validated in any useful form 
 $ npm install -g fb-birthday-gratulator
 $ fb-gratulate COMMAND
 running command...
-$ fb-gratulate (-v|--version|version)
-fb-birthday-gratulator/4.0.9 darwin-x64 node-v17.7.1
+$ fb-gratulate (--version|-v)
+fb-birthday-gratulator/4.1.2 darwin-x64 node-v22.1.0
 $ fb-gratulate --help [COMMAND]
 USAGE
   $ fb-gratulate COMMAND
@@ -74,7 +74,9 @@ USAGE
 <!-- commands -->
 * [`fb-gratulate config`](#fb-gratulate-config)
 * [`fb-gratulate congratulate`](#fb-gratulate-congratulate)
+* [`fb-gratulate gratulate`](#fb-gratulate-gratulate)
 * [`fb-gratulate help [COMMAND]`](#fb-gratulate-help-command)
+* [`fb-gratulate version`](#fb-gratulate-version)
 
 ## `fb-gratulate config`
 
@@ -82,15 +84,20 @@ Generate or edit a config - interactively
 
 ```
 USAGE
-  $ fb-gratulate config
+  $ fb-gratulate config [--version] [--help]
+
+FLAGS
+  --help     Show CLI help.
+  --version  Show CLI version.
 
 DESCRIPTION
+  Generate or edit a config - interactively
   ...
-  This command lets you create a new config if none exists interactively 
+  This command lets you create a new config if none exists interactively
   or opens lazily an editor to let you edit the existing config.
 ```
 
-_See code: [src/commands/config.js](https://github.com/GenieTim/fb-birthday-gratulator/blob/v4.0.9/src/commands/config.js)_
+_See code: [src/commands/config.js](https://github.com/GenieTim/fb-birthday-gratulator/blob/v4.1.2/src/commands/config.js)_
 
 ## `fb-gratulate congratulate`
 
@@ -98,22 +105,47 @@ Congratulate all todays birthday friends
 
 ```
 USAGE
-  $ fb-gratulate congratulate
+  $ fb-gratulate congratulate [--version] [-d] [--help]
 
-OPTIONS
+FLAGS
   -d, --debug
-  -h, --help     show CLI help
-  -v, --version  show CLI version
+      --help     Show CLI help.
+      --version  Show CLI version.
 
 DESCRIPTION
+  Congratulate all todays birthday friends
   ...
   Note that you require a config as described [here](https://github.com/GenieTim/fb-birthday-gratulator#configuration)
+
 
 ALIASES
   $ fb-gratulate gratulate
 ```
 
-_See code: [src/commands/congratulate.js](https://github.com/GenieTim/fb-birthday-gratulator/blob/v4.0.9/src/commands/congratulate.js)_
+_See code: [src/commands/congratulate.js](https://github.com/GenieTim/fb-birthday-gratulator/blob/v4.1.2/src/commands/congratulate.js)_
+
+## `fb-gratulate gratulate`
+
+Congratulate all todays birthday friends
+
+```
+USAGE
+  $ fb-gratulate gratulate [--version] [-d] [--help]
+
+FLAGS
+  -d, --debug
+      --help     Show CLI help.
+      --version  Show CLI version.
+
+DESCRIPTION
+  Congratulate all todays birthday friends
+  ...
+  Note that you require a config as described [here](https://github.com/GenieTim/fb-birthday-gratulator#configuration)
+
+
+ALIASES
+  $ fb-gratulate gratulate
+```
 
 ## `fb-gratulate help [COMMAND]`
 
@@ -121,16 +153,39 @@ Display help for fb-gratulate.
 
 ```
 USAGE
-  $ fb-gratulate help [COMMAND]
+  $ fb-gratulate help [COMMAND...] [-n]
 
 ARGUMENTS
-  COMMAND  Command to show help for.
+  COMMAND...  Command to show help for.
 
-OPTIONS
+FLAGS
   -n, --nested-commands  Include all nested commands in the output.
+
+DESCRIPTION
+  Display help for fb-gratulate.
 ```
 
-_See code: [@oclif/plugin-help](https://github.com/oclif/plugin-help/blob/v5.1.11/src/commands/help.ts)_
+_See code: [@oclif/plugin-help](https://github.com/oclif/plugin-help/blob/v6.0.21/src/commands/help.ts)_
+
+## `fb-gratulate version`
+
+```
+USAGE
+  $ fb-gratulate version [--json] [--verbose]
+
+FLAGS
+  --verbose  Show additional information about the CLI.
+
+GLOBAL FLAGS
+  --json  Format output as json.
+
+FLAG DESCRIPTIONS
+  --verbose  Show additional information about the CLI.
+
+    Additionally shows the architecture, node version, operating system, and versions of plugins that the CLI is using.
+```
+
+_See code: [@oclif/plugin-version](https://github.com/oclif/plugin-version/blob/v2.0.18/src/commands/version.ts)_
 <!-- commandsstop -->
 
 ## Automation
