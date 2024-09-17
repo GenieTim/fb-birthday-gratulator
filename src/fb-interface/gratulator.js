@@ -1,8 +1,8 @@
-const playwright = require("playwright");
+import playwright from "playwright";
 // other dependencies
-const fs = require("fs");
-const path = require("path");
-const util = require("util");
+import fs from "fs";
+import path from "path";
+import util from "util";
 
 class Gratulator {
   /**
@@ -273,23 +273,28 @@ class Gratulator {
     // check if there is a cookie notice we have to get rid of
     let cookieBtnSelectors = [
       "css=[data-cookiebanner='accept_button']",
-      "[aria-label='Allow all cookies']",
+      "[aria-label='Allow all cookies'][tabindex='0']",
     ];
     await cookieBtnSelectors.forEach(async (cookieBtnSelector) => {
       try {
         await this.driver.waitForSelector(cookieBtnSelector, { timeout: 5000 });
-        try {
-          await this.driver.click(cookieBtnSelector);
-        } catch (error) {
-          this.logger.warn(
-            "Could not get rid of cookie notification: " + error,
-          );
+        const btnEl = await this.driver.$$(cookieBtnSelector);
+        if (btnEl) {
+          await this.driver.locator(cookieBtnSelector).scrollIntoViewIfNeeded();
+          try {
+            await this.driver.click(cookieBtnSelector);
+          } catch (error) {
+            this.logger.warn(
+              "Could not get rid of cookie notification: " + error,
+            );
+          }
         }
-      } catch {
+      } catch (e) {
         this.logger.log(
           "The cookie accept button was not found with selector " +
             cookieBtnSelector +
             ".",
+          e,
         );
       }
     });
@@ -309,10 +314,12 @@ class Gratulator {
       context = await browserType.launchPersistentContext("./user_data", {
         headless: !this.debug,
         timeout: 60_000,
+        locale: "en-US"
       });
     } else {
       browser = await browserType.launch({
         headless: !this.debug,
+        locale: "en-US"
       });
       context = await browser.newContext();
       // block possible tracking scripts to reduce overhead
@@ -355,4 +362,4 @@ function sleep(millis) {
   return new Promise((resolve) => setTimeout(resolve, millis));
 }
 
-module.exports = Gratulator;
+export default Gratulator;
