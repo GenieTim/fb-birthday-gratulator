@@ -1,1 +1,2 @@
-module.exports = require('@oclif/command')
+// module.exports = require('@oclif/core')
+export {run} from '@oclif/core'
