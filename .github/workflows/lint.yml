@@ -37,5 +37,6 @@ jobs:
 
       - name: Verify CLI execution
         run: |
-          ./bin/run --version
-          ./bin/run --help
+          ./bin/run.js --version
+          ./bin/run.js --help
+
