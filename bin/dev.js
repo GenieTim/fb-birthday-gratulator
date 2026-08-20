@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 
-import {URL} from 'url'
-const __filename = new URL('', import.meta.url).pathname
-const __dirname = new URL('.', import.meta.url).pathname
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { execute } from '@oclif/core'
 
-// eslint-disable-next-line node/shebang, unicorn/prefer-top-level-await
-;(async () => {
-  const oclif = await import('@oclif/core')
-  await oclif.execute({development: true, dir: __dirname})
-})()
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
+
+await execute({ development: true, dir: __dirname })
+

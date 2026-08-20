@@ -1,19 +1,17 @@
-/* eslint-disable no-await-in-loop */
 import { Command, Flags } from "@oclif/core";
 import Gratulator from "../fb-interface/gratulator.js";
 import fs from "fs";
 import path from "path";
 import util from "util";
-import { URL } from "url";
+import { fileURLToPath } from "node:url";
 
-const __dirname = new URL(".", import.meta.url).pathname;
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 class FbBirthdayGratulatorCommand extends Command {
   async run() {
-    const { argv, flags } = await this.parse(FbBirthdayGratulatorCommand);
-    // const name = flags.name || 'world'
-    // this.log(`hello ${name} from ./src/index.js`)
-    let configFilePath = path.join(__dirname, "/../config.json");
+    const { flags } = await this.parse(FbBirthdayGratulatorCommand);
+    let configFilePath = path.resolve(__dirname, "../../config.json");
     if (!fs.existsSync(configFilePath)) {
       configFilePath = path.join(this.config.configDir, "config.json");
       if (!fs.existsSync(configFilePath)) {
@@ -42,13 +40,13 @@ Note that you require a config as described [here](https://github.com/GenieTim/f
 `;
 
 FbBirthdayGratulatorCommand.flags = {
-  // add --version flag to show CLI version
   version: Flags.version(),
-  // add --debug flag to show Chrome (instead of headless)
-  debug: Flags.boolean({ char: "d", default: false }),
-  // add --help flag to show CLI version
+  debug: Flags.boolean({
+    char: "d",
+    default: false,
+    description: "Show browser window and pause between actions for debugging",
+  }),
   help: Flags.help(),
-  // name: flags.string({char: 'n', description: 'name to print'}),
 };
 
 FbBirthdayGratulatorCommand.aliases = ["gratulate"];

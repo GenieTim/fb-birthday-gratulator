@@ -55,7 +55,7 @@
   "repository": "GenieTim/fb-birthday-gratulator",
   "scripts": {
     "build": "shx rm -rf dist && tsc -b",
-    "lint": "eslint . --ext .ts",
+    "lint": "eslint .",
     "postpack": "shx rm -f oclif.manifest.json",
     "posttest": "yarn lint",
     "prepack": "npx oclif manifest && npx oclif readme",

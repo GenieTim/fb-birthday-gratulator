@@ -1,8 +1,12 @@
 import playwright from "playwright";
-// other dependencies
 import fs from "fs";
 import path from "path";
 import util from "util";
+import { fileURLToPath } from "node:url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const PROJECT_ROOT = path.resolve(__dirname, "../../");
 
 class Gratulator {
   /**
@@ -10,19 +14,29 @@ class Gratulator {
    *
    * @param {LoggerInterface} logger The logger to use (e.g. console)
    * @param {string} configFilePath The path to the configuration file
-   * @param {boolean} debug Whether to use debug mode: headfull chrome
+   * @param {boolean} debug Whether to use debug mode: headful chrome and verbose delays
    */
   constructor(logger, configFilePath, debug = false) {
     this.debug = debug;
-    if (debug) {
-      logger.log("Debug mode on.");
-    }
-
     this.logger = logger;
     this.BIRTHDAY_URL = "https://www.facebook.com/events/birthdays/";
     this.LOGIN_URL = "https://www.facebook.com/login";
+    this.driver = null;
+    this.context = null;
+    this.browser = null;
+
+    if (this.debug) {
+      this.logger.log("Debug mode on.");
+    }
+
     this.logger.log("Using config file: " + configFilePath);
-    this.config = JSON.parse(fs.readFileSync(configFilePath, "utf8"));
+    try {
+      this.config = JSON.parse(fs.readFileSync(configFilePath, "utf8"));
+    } catch (error) {
+      this.logger.error("Failed reading config file at " + configFilePath + ": " + error.message);
+      throw error;
+    }
+
     if (!this.config.username || !this.config.password || !this.config.wishes) {
       this.logger.error(
         util.format(
@@ -37,77 +51,141 @@ class Gratulator {
    * Main logic in order to send wishes to all friends with today birthday
    */
   async sendWishes() {
-    // startup
-    await this.login();
-    if (this.debug) {
-      this.logger.debug("Logged in. Fetching todays birthdays...");
-    }
-
-    // get list of all birthdaying friends
-    let birthdayTitleDiv = (await this.getBirthdayList())[0];
-    if (!birthdayTitleDiv) {
-      this.logger.warn("Did not find today card.");
-      return;
-    }
-
-    let birthdayDivs = await birthdayTitleDiv.$$("xpath=../div");
-    while (birthdayDivs.length === 1) {
-      // step up until we find two divs next to each other.
-      // eslint-disable-next-line no-await-in-loop
-      birthdayDivs = await birthdayDivs[0].$$("xpath=../../div");
-    }
-
-    let birthdayDiv = birthdayDivs[1];
-    let textAreas = await birthdayDiv.$$('div[role="textbox"]');
-
-    // try to fetch the usernames – fails sometimes. TODO: investigate
-    let users = [];
     try {
-      users = await this.findUsernames(birthdayDiv);
-      for (let index = 0; index < users.length; ++index) {
-        let a = users[index];
-        // eslint-disable-next-line no-await-in-loop
-        users[index] = await this.driver.evaluate(
-          (element) => element.textContent,
-          a,
+      // startup
+      await this.login();
+      if (this.debug) {
+        this.logger.log("Logged in. Fetching today's birthdays...");
+        await this.debugSleep(2000);
+      }
+
+      // get list of all birthdaying friends
+      const birthdayList = await this.getBirthdayList();
+      let birthdayTitleDiv = birthdayList[0];
+      if (!birthdayTitleDiv) {
+        this.logger.warn("Did not find today's birthday card.");
+        return;
+      }
+
+      await this.debugSleep(1500);
+
+      let birthdayDivs = await birthdayTitleDiv.$$("xpath=../div");
+      let depth = 0;
+      while (birthdayDivs.length <= 1 && depth < 5) {
+        // step up until we find multiple sibling divs or reach depth limit
+        depth++;
+        try {
+          const nextDivs = await (birthdayDivs[0] || birthdayTitleDiv).$$("xpath=../../div");
+          if (nextDivs && nextDivs.length > 0) {
+            birthdayDivs = nextDivs;
+          } else {
+            break;
+          }
+        } catch {
+          break;
+        }
+      }
+
+      let birthdayDiv = birthdayDivs.length > 1 ? birthdayDivs[1] : (birthdayDivs[0] || birthdayTitleDiv);
+      let textAreas = await birthdayDiv.$$('div[role="textbox"]');
+
+      // fallback if not found directly in sibling
+      if (textAreas.length === 0) {
+        textAreas = await birthdayTitleDiv.$$('xpath=..//div[@role="textbox"]');
+      }
+      if (textAreas.length === 0) {
+        textAreas = await this.driver.$$('div[role="textbox"]');
+      }
+
+      // try to fetch the usernames
+      let users = [];
+      try {
+        const userElements = await this.findUsernames(birthdayDiv);
+        for (const el of userElements) {
+          const name = await this.driver.evaluate((element) => element.textContent, el);
+          if (name && name.trim()) {
+            users.push(name.trim());
+          }
+        }
+      } catch (error) {
+        this.logger.error("Could not extract usernames: " + error.message);
+      }
+
+      if (this.debug) {
+        this.logger.log(
+          util.format(
+            "Found %d textbox(es) and %d username(s).",
+            textAreas.length,
+            users.length,
+          ),
+        );
+        await this.debugSleep(2000);
+      }
+
+      if (textAreas.length === 0) {
+        this.logger.log("You have wished everyone already ;)");
+        return;
+      }
+
+      if (users.length !== textAreas.length) {
+        this.logger.warn(
+          util.format(
+            "Did not find matching number of usernames (%d names for %d textboxes). Will use generic messages where needed...",
+            users.length,
+            textAreas.length,
+          ),
         );
       }
-    } catch (error) {
-      this.logger.error(error);
-      // this.logger.warn('Did not find users names. Error: ' + JSON.stringify(error))
-    }
 
-    if (textAreas.length === 0) {
-      this.logger.log("You have wished everyone already ;)");
-      return this.driver.close();
-    }
+      // loop friends & wish them all the best
+      for (let index = 0; index < textAreas.length; index++) {
+        const a = textAreas[index];
+        let user = null;
+        if (users.length === textAreas.length) {
+          user = users[index];
+        }
 
-    if (users.length !== textAreas.length) {
-      this.logger.warn(
-        util.format(
-          "Did not find enough usernames (%d of %d). Will skip personalized messages...",
-          users.length,
-          textAreas.length,
-        ),
-      );
-    }
+        let wish = await this.getWish(user);
+        this.logger.log(util.format('Congratulating "%s" with "%s"', user || "Friend", wish));
 
-    // loop friends & wish them all the best
-    for await (const [index, a] of textAreas.entries()) {
-      let user = null;
-      if (users.length === textAreas.length) {
-        user = users[index];
+        try {
+          await a.scrollIntoViewIfNeeded().catch(() => {});
+          await a.click().catch(() => {});
+          await this.debugSleep(1500);
+
+          // Type the wish (with typing delay in debug mode so it looks natural and is visible)
+          if (typeof a.pressSequentially === "function") {
+            await a.pressSequentially(wish, { delay: this.debug ? 80 : 20 });
+          } else if (typeof a.type === "function") {
+            await a.type(wish, { delay: this.debug ? 80 : 20 });
+          } else {
+            await a.fill(wish);
+          }
+
+          // Sleep in debug mode so the user can inspect the typed message before sending
+          await this.debugSleep(2500);
+
+          await this.driver.keyboard.press("Enter");
+
+          // Sleep after sending wish so the POST request completes and UI updates
+          await this.randomSleep(3000);
+          await this.debugSleep(2500);
+
+          this.logger.log(util.format('Success: Congratulated "%s"', user || "Friend"));
+        } catch (cardError) {
+          this.logger.error(
+            util.format('Failed to congratulate "%s": %s', user || "Friend", cardError.message),
+          );
+        }
       }
 
-      let wish = await this.getWish(user);
-      this.logger.log(util.format('Congratulating "%s" with "%s"', user, wish));
-      await a.type(wish);
-      await this.driver.keyboard.press("Enter");
-      await this.randomSleep();
-      this.logger.log(util.format('Success: Congratulated "%s"', user));
+      if (this.debug) {
+        this.logger.log("Finished sending all birthday wishes.");
+        await this.debugSleep(3000);
+      }
+    } finally {
+      await this.close();
     }
-
-    // this.driver.close()
   }
 
   /**
@@ -116,12 +194,25 @@ class Gratulator {
    * @param {ElementHandle} birthdayDiv the div of today's birthdays
    */
   async findUsernames(birthdayDiv) {
-    let users = await birthdayDiv.$$("div a h3");
-    if (users.length === 0) {
-      users = await birthdayDiv.$$("div a h2");
+    const selectors = [
+      "div a h3",
+      "div a h2",
+      "a[role='link'] h3",
+      "a[role='link'] h2",
+      "a[role='link'] span[dir='auto']",
+      "h3 span",
+      "h2 span",
+      "span[dir='auto']",
+    ];
+
+    for (const selector of selectors) {
+      const users = await birthdayDiv.$$(selector);
+      if (users.length > 0) {
+        return users;
+      }
     }
 
-    return users;
+    return [];
   }
 
   /**
@@ -131,16 +222,20 @@ class Gratulator {
    */
   async getWish(username) {
     if (username) {
-      username = username.replace(/\s\s+/g, " ");
+      username = username.replace(/\s\s+/g, " ").trim();
     }
 
+    const wishes = this.config.wishes || {};
     let selection;
-    // has the user a proprietary congratulation?
-    selection =
-      username &&
-      Object.prototype.hasOwnProperty.call(this.config.wishes, username)
-        ? this.config.wishes[username]
-        : this.config.wishes.anyone;
+
+    if (username && Object.prototype.hasOwnProperty.call(wishes, username) && Array.isArray(wishes[username]) && wishes[username].length > 0) {
+      selection = wishes[username];
+    } else if (Array.isArray(wishes.anyone) && wishes.anyone.length > 0) {
+      selection = wishes.anyone;
+    } else {
+      selection = ["Happy birthday! 🥳🎈🎂"];
+    }
+
     return selection[Math.floor(Math.random() * selection.length)];
   }
 
@@ -148,50 +243,59 @@ class Gratulator {
    * Get the list with all the birthday kids
    */
   async getBirthdayList() {
-    if (this.driver.url() !== this.BIRTHDAY_URL) {
+    const currentUrl = this.driver.url();
+    if (!currentUrl.includes("/events/birthdays")) {
       await this.driver.goto(this.BIRTHDAY_URL);
-      await this.randomSleep();
+      await this.driver.waitForLoadState("domcontentloaded").catch(() => {});
+      await this.randomSleep(2000);
+      await this.debugSleep(2000);
     }
 
-    if (this.driver.url() !== this.BIRTHDAY_URL) {
+    if (!this.driver.url().includes("/events/birthdays")) {
       await this.driver.goto("https://www.facebook.com/events");
-      await this.randomSleep();
-      // Facebook has a strange way of redirection: opening https://www.facebook.com/events/birthdays
-      // redirects to something ? acontext = { someObject }.That URL is the one indicated when hovering the
-      // sidebar button.Clicking the side bar button leads in the browser to / events / birthdays.WTF.
+      await this.driver.waitForLoadState("domcontentloaded").catch(() => {});
+      await this.randomSleep(2000);
+      await this.debugSleep(2000);
 
-      // await sleep(100000)
       try {
-        await this.driver.click(
-          'div[role="navigation"] a[href="/events/birthdays/?acontext=%7B%22event_action_history%22%3A[]%7D"]',
-        );
+        const birthdayLink = this.driver.locator('a[href*="/events/birthdays"]').first();
+        if (await birthdayLink.count() > 0) {
+          await birthdayLink.click();
+          await this.driver.waitForLoadState("domcontentloaded").catch(() => {});
+        }
       } catch (error) {
-        this.logger.error(error);
-        await sleep(100_000);
+        this.logger.warn("Could not navigate to birthdays from events page: " + error.message);
       }
 
-      await this.randomSleep();
+      await this.randomSleep(2000);
+      await this.debugSleep(2000);
     }
 
-    // unfortunately, in new facebook, we need to go via text hints, as
-    // class names are not reliable
-    let test = await this.driver.$$(
-      'xpath=//div[div[*[self::h1 or self::h2 or self::h3][text() = "Today\'s birthdays"]]]',
-    );
-    if (test.length === 0) {
-      // they change the markup way too often. Maybe it looks like this, this time?
-      return this.driver.$$(
-        'xpath=//div[div[*[self::h1 or self::h2 or self::h3]/*[text() = "Today\'s birthdays"]]]',
-      );
+    // Try finding "Today's birthdays" heading with different tag variations and quote styles (' vs ’)
+    const headingSelectors = [
+      'xpath=//div[div[*[self::h1 or self::h2 or self::h3 or self::span][contains(text(), "Today\'s birthday") or contains(text(), "Today’s birthday") or contains(text(), "Today\'s Birthday") or contains(text(), "Today’s Birthday")]]]',
+      'xpath=//div[div[*[self::h1 or self::h2 or self::h3 or self::span]/*[contains(text(), "Today\'s birthday") or contains(text(), "Today’s birthday") or contains(text(), "Today\'s Birthday") or contains(text(), "Today’s Birthday")]]]',
+      'xpath=//div[contains(., "Today\'s birthdays") or contains(., "Today’s birthdays")]',
+    ];
+
+    for (const selector of headingSelectors) {
+      try {
+        const matches = await this.driver.$$(selector);
+        if (matches.length > 0) {
+          return matches;
+        }
+      } catch {
+        // continue to next selector
+      }
     }
 
-    return test;
+    return [];
   }
 
   /**
-   * Log in to facebook – try twice because we can
+   * Log in to facebook – try up to 3 times
    *
-   * @param {int} rep how many attempts where taken to log in
+   * @param {number} rep how many attempts were taken to log in
    */
   async login(rep = 0) {
     if (!this.driver) {
@@ -200,16 +304,12 @@ class Gratulator {
 
     try {
       await this.driver.goto(this.LOGIN_URL);
+      await this.driver.waitForLoadState("domcontentloaded").catch(() => {});
+      await this.debugSleep(2000);
     } catch (error) {
-      this.logger.warn(
-        "Failed to go to login page. Am on " + this.driver.url(),
-      );
-      const screenShotPath = path.join(
-        "/",
-        __dirname,
-        "../../login-nav-error.png",
-      );
-      await this.driver.screenshot({ path: screenShotPath, fullPage: true });
+      this.logger.warn("Failed to go to login page. Am on " + this.driver.url());
+      const screenShotPath = path.resolve(PROJECT_ROOT, "login-nav-error.png");
+      await this.driver.screenshot({ path: screenShotPath, fullPage: true }).catch(() => {});
       this.logger.error(error);
       throw new Error(
         "Failed navigating to login. URL is still " +
@@ -219,35 +319,47 @@ class Gratulator {
       );
     }
 
-    if (this.driver.url().startsWith(this.LOGIN_URL)) {
+    if (this.driver.url().startsWith(this.LOGIN_URL) || this.driver.url().includes("/login")) {
       await this.acceptCookies();
       await this.randomSleep(1000);
+      await this.debugSleep(1500);
+
       await this.driver.fill("input[name=email]", this.config.username);
-      await this.randomSleep(100);
+      await this.randomSleep(300);
+      await this.debugSleep(1000);
+
       await this.driver.fill("input[name=pass]", this.config.password);
       await this.randomSleep(500);
-      // two methods to submit form – just try them each
-      await (rep < 2
-        ? this.driver.click('css=[type="submit"]')
-        : this.driver.$eval("form", (form) => form.submit()));
-      // sleep is so important, you know?
-      await this.randomSleep();
-      if (this.driver.url().startsWith(this.LOGIN_URL)) {
-        if (rep > 2) {
-          // failed login even after second try.
-          this.logger.log(
-            "Failed logging in after three attempts. Page is " +
-              this.driver.url(),
-          );
-          const screenShotPath = path.join(
-            "/",
-            __dirname,
-            "../../login-error.png",
-          );
+      await this.debugSleep(1500);
+
+      // Submit form
+      if (rep < 2) {
+        const submitBtn = this.driver.locator('button[name="login"], button[type="submit"], [type="submit"]').first();
+        if ((await submitBtn.count()) > 0) {
+          await submitBtn.click();
+        } else {
+          await this.driver.keyboard.press("Enter");
+        }
+      } else {
+        try {
+          await this.driver.$eval("form", (form) => form.submit());
+        } catch {
+          await this.driver.keyboard.press("Enter");
+        }
+      }
+
+      await this.randomSleep(3000);
+      await this.debugSleep(3000);
+
+      if (this.driver.url().startsWith(this.LOGIN_URL) || this.driver.url().includes("/login")) {
+        if (rep >= 2) {
+          // failed login even after third try.
+          this.logger.log("Failed logging in after three attempts. Page is " + this.driver.url());
+          const screenShotPath = path.resolve(PROJECT_ROOT, "login-error.png");
           await this.driver.screenshot({
             path: screenShotPath,
             fullPage: true,
-          });
+          }).catch(() => {});
           throw new Error(
             "Failed login. After three attempts, URL is still " +
               this.driver.url() +
@@ -255,7 +367,9 @@ class Gratulator {
               screenShotPath,
           );
         } else {
-          await this.login(true);
+          this.logger.warn(util.format("Login attempt %d failed. Retrying...", rep + 1));
+          await this.debugSleep(2000);
+          await this.login(rep + 1);
         }
       }
     } else {
@@ -265,101 +379,178 @@ class Gratulator {
           this.driver.url(),
         ),
       );
+      await this.debugSleep(2000);
     }
   }
 
+  /**
+   * Accept or dismiss cookie consent banner if present
+   */
   async acceptCookies() {
     await this.randomSleep(1000);
-    // check if there is a cookie notice we have to get rid of
-    let cookieBtnSelectors = [
-      "css=[data-cookiebanner='accept_button']",
-      "[aria-label='Allow all cookies'][tabindex='0']",
+    await this.debugSleep(1500);
+
+    const cookieBtnSelectors = [
+      "[data-cookiebanner='accept_button']",
+      "[data-cookiebanner='accept_only_essential_button']",
+      "[data-cookiebanner='accept_all_button']",
+      "button[data-cookiebanner='accept_button']",
+      "[aria-label='Allow all cookies']",
+      "[aria-label='Allow essential and optional cookies']",
+      "[aria-label='Accept all']",
+      "[aria-label='Only allow essential cookies']",
+      "button[name='accept_cookies']",
+      "xpath=//button[contains(., 'Allow all cookies') or contains(., 'Accept all') or contains(., 'Allow essential') or contains(., 'Alle Cookies gestatten') or contains(., 'Nur essenzielle Cookies')]",
+      "xpath=//div[@role='button'][contains(., 'Allow all cookies') or contains(., 'Accept all') or contains(., 'Allow essential')]",
     ];
-    await cookieBtnSelectors.forEach(async (cookieBtnSelector) => {
+
+    for (const cookieBtnSelector of cookieBtnSelectors) {
       try {
-        await this.driver.waitForSelector(cookieBtnSelector, { timeout: 5000 });
-        const btnEl = await this.driver.$$(cookieBtnSelector);
-        if (btnEl) {
-          await this.driver.locator(cookieBtnSelector).scrollIntoViewIfNeeded();
-          try {
-            await this.driver.click(cookieBtnSelector);
-          } catch (error) {
-            this.logger.warn(
-              "Could not get rid of cookie notification: " + error,
-            );
-          }
+        const btnLocator = this.driver.locator(cookieBtnSelector).first();
+        const isVisible = await btnLocator.isVisible({ timeout: 1500 }).catch(() => false);
+        if (isVisible) {
+          await btnLocator.scrollIntoViewIfNeeded().catch(() => {});
+          await btnLocator.click({ timeout: 3000 });
+          this.logger.log("Accepted cookie dialog using: " + cookieBtnSelector);
+          await this.randomSleep(1000);
+          await this.debugSleep(2000);
+          break;
         }
-      } catch (e) {
-        this.logger.log(
-          "The cookie accept button was not found with selector " +
-            cookieBtnSelector +
-            ".",
-          e,
-        );
+      } catch {
+        // Continue to next selector
       }
-    });
+    }
   }
 
   /**
-   * Start the Puppeteer browser
+   * Start the Playwright browser
    */
   async startDriver() {
-    const browserType =
-      await playwright[
-        this.config.browserType ? this.config.browserType : "chromium"
-      ];
-    let context;
-    let browser;
+    const browserName = this.config.browserType ? this.config.browserType : "chromium";
+    const browserType = playwright[browserName];
+
+    // Determine defined userData directory independent of current working directory
+    const userDataDir = this.config.userDataDir
+      ? path.resolve(this.config.userDataDir)
+      : path.join(PROJECT_ROOT, "user_data");
+
     if (this.config.persistent) {
-      context = await browserType.launchPersistentContext("./user_data", {
+      fs.mkdirSync(userDataDir, { recursive: true });
+      if (this.debug) {
+        this.logger.log("Launching persistent context in: " + userDataDir);
+      }
+
+      this.context = await browserType.launchPersistentContext(userDataDir, {
         headless: !this.debug,
-        timeout: 60_000,
-        locale: "en-US"
+        timeout: 180_000,
+        locale: "en-US",
+        viewport: this.debug ? { width: 1240, height: 980 } : undefined,
       });
+
+      // Apply addons to context if available
+      try {
+        const addons = await import("playwright-addons");
+        if (addons.adblocker) await addons.adblocker(this.context);
+        if (addons.stealth) await addons.stealth(this.context);
+      } catch (addonErr) {
+        if (this.debug) {
+          this.logger.log("Could not load addons for persistent context: " + addonErr.message);
+        }
+      }
     } else {
-      browser = await browserType.launch({
+      if (this.debug) {
+        this.logger.log("Launching standard non-persistent browser context");
+      }
+
+      this.browser = await browserType.launch({
         headless: !this.debug,
-        locale: "en-US"
+        timeout: 180_000,
+        locale: "en-US",
       });
-      context = await browser.newContext();
+      this.context = await this.browser.newContext({
+        locale: "en-US",
+        viewport: this.debug ? { width: 1240, height: 980 } : undefined,
+      });
+
       // block possible tracking scripts to reduce overhead
-      const addons = await import("playwright-addons");
-      await addons.adblocker(browser);
-      await addons.stealth(browser);
+      try {
+        const addons = await import("playwright-addons");
+        if (addons.adblocker) await addons.adblocker(this.browser);
+        if (addons.stealth) await addons.stealth(this.browser);
+      } catch (addonErr) {
+        if (this.debug) {
+          this.logger.log("Could not load addons for browser: " + addonErr.message);
+        }
+      }
     }
 
     try {
-      this.driver = await context.newPage();
+      const pages = this.context.pages();
+      this.driver = pages.length > 0 ? pages[0] : await this.context.newPage();
     } catch (error) {
-      this.logger.error(error);
-      return;
+      this.logger.error("Failed opening page: " + error.message);
+      throw error;
     }
 
     if (this.debug) {
-      this.driver.setViewportSize({ width: 1240, height: 980 });
+      await this.driver.setViewportSize({ width: 1240, height: 980 }).catch(() => {});
+      await this.debugSleep(1500);
     }
 
     await this.driver.goto(this.BIRTHDAY_URL);
+    await this.debugSleep(2000);
   }
 
   /**
-   * Sleep for a random amount of time
+   * Sleep for a random amount of time. In debug mode, a guaranteed minimum pause is enforced.
    *
-   * @param {double} maximum The maximum sleep time in milliseconds
+   * @param {number} maximum The maximum sleep time in milliseconds
    */
   async randomSleep(maximum = 10_000) {
-    await sleep(maximum * Math.random());
+    const minSleep = this.debug ? Math.max(maximum * 0.4, 2000) : 0;
+    const duration = minSleep + maximum * Math.random();
+    await this.sleep(duration);
   }
-}
 
-/**
- * Sleep for a certain time, but only if you have time to `await` it
- *
- * @param {double} millis Millisecond time to sleep
- * @returns {Promise} to sleep. Just like we did. In the end still read a book under the bed sheets.
- */
-function sleep(millis) {
-  return new Promise((resolve) => setTimeout(resolve, millis));
+  /**
+   * Dedicated sleep that only runs in debug mode
+   *
+   * @param {number} millis Milliseconds to pause
+   */
+  async debugSleep(millis = 2000) {
+    if (this.debug) {
+      await this.sleep(millis);
+    }
+  }
+
+  /**
+   * Helper sleep function
+   *
+   * @param {number} millis Millisecond time to sleep
+   * @returns {Promise<void>}
+   */
+  async sleep(millis) {
+    return new Promise((resolve) => setTimeout(resolve, millis));
+  }
+
+  /**
+   * Safely close all browser and context resources
+   */
+  async close() {
+    try {
+      if (this.driver && !this.driver.isClosed()) {
+        await this.driver.close().catch(() => {});
+      }
+      if (this.context) {
+        await this.context.close().catch(() => {});
+      }
+      if (this.browser) {
+        await this.browser.close().catch(() => {});
+      }
+    } catch {
+      // Suppress closure errors on exit
+    }
+  }
 }
 
 export default Gratulator;
