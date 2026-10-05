@@ -1,0 +1,45 @@
+services:
+  fb-birthday-gratulator:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: fb-birthday-gratulator:latest
+    container_name: fb-birthday-gratulator
+    restart: unless-stopped
+    shm_size: 1gb
+    ports:
+      - "${PORT:-3000}:3000"
+    volumes:
+      - fb_user_data:/app/user_data
+      # Optional: uncomment to mount a local config.json file
+      # - ./config.json:/app/config.json:ro
+    environment:
+      - NODE_ENV=production
+      - TZ=${TZ:-Europe/Zurich}
+      # Optional: set CRON_SCHEDULE only if not using Coolify's native Scheduled Tasks tab
+      - CRON_SCHEDULE=${CRON_SCHEDULE:-}
+      - RUN_ON_STARTUP=${RUN_ON_STARTUP:-false}
+      - DELAY_MAX_H=${DELAY_MAX_H:-}
+      - FB_USERNAME=${FB_USERNAME:-}
+      - FB_PASSWORD=${FB_PASSWORD:-}
+      - FB_WISHES=${FB_WISHES:-}
+      - FB_PERSISTENT=${FB_PERSISTENT:-true}
+      - DEBUG=${DEBUG:-false}
+      - TRIGGER_TOKEN=${TRIGGER_TOKEN:-}
+      - PORT=3000
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://localhost:' + (process.env.PORT || 3000) + '/health').then(r => r.ok ? process.exit(0) : process.exit(1)).catch(() => process.exit(1))"
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+volumes:
+  fb_user_data:
+    name: fb_birthday_gratulator_user_data

@@ -1,4 +1,4 @@
-name: Lint & Test
+name: CI
 
 on:
   push:
@@ -11,8 +11,8 @@ on:
       - main
 
 jobs:
-  lint:
-    name: Lint & CLI Sanity Checks
+  test:
+    name: Lint, Unit Tests & CLI Checks
     runs-on: ubuntu-latest
 
     strategy:
@@ -32,11 +32,29 @@ jobs:
       - name: Install dependencies
         run: yarn install --prefer-offline
 
-      - name: Run ESLint
-        run: yarn lint
+      - name: Run Tests & ESLint
+        run: yarn test
 
       - name: Verify CLI execution
         run: |
           ./bin/run.js --version
           ./bin/run.js --help
+          ./bin/run.js congratulate --help
 
+  docker:
+    name: Docker Build & Compose Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Validate Docker Compose Configuration
+        run: docker compose config
+
+      - name: Build Docker image
+        run: docker build -t fb-birthday-gratulator:ci .
+
+      - name: Verify CLI inside container
+        run: |
+          docker run --rm fb-birthday-gratulator:ci congratulate --help

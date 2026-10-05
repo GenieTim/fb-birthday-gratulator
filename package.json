@@ -12,6 +12,7 @@
     "@oclif/plugin-help": "^7.0.0",
     "@oclif/plugin-version": "^3.0.1",
     "cli-ux": "^6.0.9",
+    "croner": "^10.0.1",
     "launch-editor": "^2.14.1",
     "playwright": "^1.63.0",
     "playwright-addons": "Niek/playwright-addons#master"
@@ -54,12 +55,15 @@
   },
   "repository": "GenieTim/fb-birthday-gratulator",
   "scripts": {
+    "start": "node bin/daemon.js",
+    "daemon": "node bin/daemon.js",
+    "gratulate": "node bin/run.js congratulate",
     "build": "shx rm -rf dist && tsc -b",
     "lint": "eslint .",
     "postpack": "shx rm -f oclif.manifest.json",
     "posttest": "yarn lint",
     "prepack": "npx oclif manifest && npx oclif readme",
-    "test": "echo NO TESTS",
+    "test": "node --test test/*.test.js",
     "version": "npx oclif readme && git add README.md",
     "fix": "eslint --fix ."
   }

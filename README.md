@@ -188,8 +188,86 @@ FLAG DESCRIPTIONS
 _See code: [@oclif/plugin-version](https://github.com/oclif/plugin-version/blob/v2.0.18/src/commands/version.ts)_
 <!-- commandsstop -->
 
-## Automation
-Use a separate program, such as a [cron](https://help.ubuntu.com/community/CronHowto), to execute this utility daily.
+## Deployment (Coolify & Docker)
+
+This repository includes first-class support for deploying to [Coolify](https://coolify.io) or any Docker / Docker Compose host.
+
+### Deploying on Coolify
+
+1. **Add Resource in Coolify**:
+   - In your Coolify dashboard, click **+ Add Resource** &rarr; **Git Repository**.
+   - Select this repository.
+   - Coolify will detect `docker-compose.yml` automatically (or you can select **Docker Compose** / **Dockerfile**).
+
+2. **Configure Environment Variables** in Coolify:
+   | Variable | Required | Default | Description |
+   |---|---|---|---|
+   | `FB_USERNAME` | Yes | - | Your Facebook login email or username |
+   | `FB_PASSWORD` | Yes | - | Your Facebook password |
+   | `TZ` | No | `Europe/Zurich` | Timezone (e.g. `UTC`, `America/New_York`) |
+   | `FB_WISHES` | No | *(Default wishes)* | Custom wishes as JSON object, JSON array, or comma-separated strings |
+   | `FB_PERSISTENT` | No | `true` | Save cookies and browser profile to volume (`/app/user_data`) |
+   | `RUN_ON_STARTUP` | No | `false` | Run congratulator once immediately upon container start |
+   | `DELAY_MAX_H` | No | *(None)* | Random delay up to this many hours before executing (e.g. `4`) |
+   | `CRON_SCHEDULE` | No | *(None)* | Optional internal cron (only needed if NOT using Coolify's Scheduled Tasks) |
+   | `TRIGGER_TOKEN` | No | *(None)* | Optional token to protect manual webhooks via `POST /trigger` |
+   | `PORT` | No | `3000` | Port for the HTTP healthcheck & status server |
+
+3. **Deploy the Service**:
+   - Click **Deploy**.
+   - The container runs as a background service, keeping your Facebook session cookies in the persistent volume `fb_user_data` and serving healthchecks on port 3000.
+
+4. **Schedule the Daily Task in Coolify (Recommended)**:
+   - In your deployed resource in Coolify, open the **Scheduled Tasks** tab.
+   - Click **+ Add New**.
+   - Fill in:
+     - **Name**: `Daily Birthday Wishes`
+     - **Command**: `fb-gratulate congratulate`
+     - **Frequency**: `0 9 * * *` (e.g. every day at 09:00 AM)
+   - Click **Save**.
+   - Coolify will run `fb-gratulate congratulate` inside the container on schedule, display individual execution logs and duration for each run, and let you test anytime with the **Run Now** button!
+
+### HTTP Healthcheck & Status API
+
+The daemon includes a built-in HTTP server on port 3000:
+- **`GET /health`** (or `GET /`): Returns JSON with uptime, last run status, and next scheduled run timestamp. Coolify uses this for automatic health monitoring.
+- **`POST /trigger`**: Triggers an immediate congratulation run. If `TRIGGER_TOKEN` is configured, pass `Authorization: Bearer <token>` or `x-trigger-token: <token>`.
+
+### Initial Login & 2-Step Verification (2FA)
+
+When logging in for the first time, Facebook may require 2-step verification or login approval on your mobile device. There are two easy ways to handle this:
+
+#### Method A: Copy existing local session (Recommended)
+Log in once on your local machine with a visible browser:
+```sh
+yarn gratulate -d
+```
+Once approved, copy your local `user_data/` directory directly into the Docker volume on your server:
+```sh
+docker cp user_data/. fb-birthday-gratulator:/app/user_data/
+```
+Because the session cookies and device trust are stored in `user_data`, the container will stay authenticated without prompting for 2FA again.
+
+#### Method B: Forward Display via `ssh -X`
+If connected to your server via `ssh -X` (or `ssh -Y`), forward the X11 display socket into Docker:
+```sh
+docker compose run --rm \
+  -e DISPLAY=$DISPLAY \
+  -v /tmp/.X11-unix:/tmp/.X11-unix \
+  fb-birthday-gratulator congratulate -d
+```
+The browser window will open on your local machine through SSH X11 forwarding, allowing you to log in and approve the 2FA checkpoint interactively. The session is preserved in the persistent volume `fb_user_data`.
+
+### Manual CLI Run
+
+You can also run one-off tasks via Docker:
+```sh
+# Run congratulate directly
+docker compose run --rm fb-birthday-gratulator congratulate
+
+# Or execute inside a running container
+docker compose exec fb-birthday-gratulator node bin/run.js congratulate
+```
 
 
 ## License

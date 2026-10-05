@@ -1,0 +1,12 @@
+node_modules
+user_data
+config.json
+.git
+.github
+.env
+.env.*
+*.log
+login-*.png
+.nyc_output
+dist
+tmp

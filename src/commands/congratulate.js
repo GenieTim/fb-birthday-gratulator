@@ -1,29 +1,17 @@
 import { Command, Flags } from "@oclif/core";
 import Gratulator from "../fb-interface/gratulator.js";
-import fs from "fs";
-import path from "path";
-import util from "util";
-import { fileURLToPath } from "node:url";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+import { applyRandomDelay } from "../delay.js";
 
 class FbBirthdayGratulatorCommand extends Command {
   async run() {
     const { flags } = await this.parse(FbBirthdayGratulatorCommand);
-    let configFilePath = path.resolve(__dirname, "../../config.json");
-    if (!fs.existsSync(configFilePath)) {
-      configFilePath = path.join(this.config.configDir, "config.json");
-      if (!fs.existsSync(configFilePath)) {
-        this.warn(
-          util.format('Config file "%s" does not exist.', configFilePath),
-        );
-        this.error(new Error("Config file not found"), { exit: 1 });
-      }
-    }
+    const debug = flags.debug || process.env.DEBUG === "true" || process.env.DEBUG === "1";
+    const configFilePath = flags.config || process.env.CONFIG_PATH || process.env.CONFIG_FILE;
+
+    await applyRandomDelay(this, flags.delayMaxH || process.env.DELAY_MAX_H);
 
     try {
-      const gratulator = new Gratulator(this, configFilePath, flags.debug);
+      const gratulator = new Gratulator(this, configFilePath, debug);
       await gratulator.sendWishes();
     } catch (error) {
       this.error(error, { exit: 2 });
@@ -45,6 +33,14 @@ FbBirthdayGratulatorCommand.flags = {
     char: "d",
     default: false,
     description: "Show browser window and pause between actions for debugging",
+  }),
+  config: Flags.string({
+    char: "c",
+    description: "Path to configuration file (defaults to config.json or FB_* env vars)",
+  }),
+  delayMaxH: Flags.string({
+    description: "Maximum random delay in hours before executing (e.g. 3.5)",
+    env: "DELAY_MAX_H",
   }),
   help: Flags.help(),
 };

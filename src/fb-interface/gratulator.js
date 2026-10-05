@@ -3,6 +3,7 @@ import fs from "fs";
 import path from "path";
 import util from "util";
 import { fileURLToPath } from "node:url";
+import { loadConfig } from "../config.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -13,7 +14,7 @@ class Gratulator {
    * Constructor to initiate all our constants
    *
    * @param {LoggerInterface} logger The logger to use (e.g. console)
-   * @param {string} configFilePath The path to the configuration file
+   * @param {string|object} configFilePath The path to the configuration file, config object, or undefined
    * @param {boolean} debug Whether to use debug mode: headful chrome and verbose delays
    */
   constructor(logger, configFilePath, debug = false) {
@@ -25,25 +26,25 @@ class Gratulator {
     this.context = null;
     this.browser = null;
 
+    const { config, source } = typeof configFilePath === "object" && configFilePath !== null && !Array.isArray(configFilePath) && configFilePath.username
+      ? { config: configFilePath, source: "in-memory object" }
+      : loadConfig(configFilePath);
+
+    this.config = config;
+    this.logger.log("Configuration source: " + source);
+
+    if (this.config.debug !== undefined && !this.debug) {
+      this.debug = Boolean(this.config.debug);
+    }
+
     if (this.debug) {
       this.logger.log("Debug mode on.");
     }
 
-    this.logger.log("Using config file: " + configFilePath);
-    try {
-      this.config = JSON.parse(fs.readFileSync(configFilePath, "utf8"));
-    } catch (error) {
-      this.logger.error("Failed reading config file at " + configFilePath + ": " + error.message);
-      throw error;
-    }
-
-    if (!this.config.username || !this.config.password || !this.config.wishes) {
-      this.logger.error(
-        util.format(
-          'Config file "%s" does not contain keys "username", "password" and "wishes".',
-          configFilePath,
-        ),
-      );
+    if (!this.config.username || !this.config.password) {
+      const msg = 'Configuration is missing "username" or "password". Please provide config.json or set FB_USERNAME and FB_PASSWORD environment variables.';
+      this.logger.error(msg);
+      throw new Error(msg);
     }
   }
 
@@ -316,7 +317,14 @@ class Gratulator {
           this.driver.url() +
           ". Took screenshot to " +
           screenShotPath,
+        { cause: error },
       );
+    }
+
+    // Check if immediately redirected to 2FA or captcha
+    if (this.isVerificationRequired() || (await this.hasCaptchaOnPage())) {
+      await this.handleVerification();
+      return;
     }
 
     if (this.driver.url().startsWith(this.LOGIN_URL) || this.driver.url().includes("/login")) {
@@ -324,36 +332,86 @@ class Gratulator {
       await this.randomSleep(1000);
       await this.debugSleep(1500);
 
-      await this.driver.fill("input[name=email]", this.config.username);
-      await this.randomSleep(300);
-      await this.debugSleep(1000);
+      if (this.isVerificationRequired() || (await this.hasCaptchaOnPage())) {
+        await this.handleVerification();
+        return;
+      }
 
-      await this.driver.fill("input[name=pass]", this.config.password);
-      await this.randomSleep(500);
-      await this.debugSleep(1500);
-
-      // Submit form
-      if (rep < 2) {
-        const submitBtn = this.driver.locator('button[name="login"], button[type="submit"], [type="submit"]').first();
-        if ((await submitBtn.count()) > 0) {
-          await submitBtn.click();
-        } else {
-          await this.driver.keyboard.press("Enter");
-        }
-      } else {
-        try {
-          await this.driver.$eval("form", (form) => form.submit());
-        } catch {
-          await this.driver.keyboard.press("Enter");
+      // Fill email safely if editable
+      const emailInput = this.driver.locator('input[name="email"], input[id="email"]').first();
+      if ((await emailInput.count()) > 0) {
+        const isEditable = await emailInput.isEditable().catch(() => false);
+        if (isEditable) {
+          await emailInput.fill(this.config.username).catch(() => {});
+          await this.randomSleep(300);
+          await this.debugSleep(1000);
         }
       }
 
-      await this.randomSleep(3000);
-      await this.debugSleep(3000);
+      if (this.isVerificationRequired() || (await this.hasCaptchaOnPage())) {
+        await this.handleVerification();
+        return;
+      }
+
+      // Fill password safely if editable
+      const passInput = this.driver.locator('input[name="pass"], input[type="password"]').first();
+      if ((await passInput.count()) > 0) {
+        const isEditable = await passInput.isEditable().catch(() => false);
+        if (isEditable) {
+          await passInput.fill(this.config.password).catch(() => {});
+          await this.randomSleep(500);
+          await this.debugSleep(1500);
+        }
+      }
+
+      if (this.isVerificationRequired() || (await this.hasCaptchaOnPage())) {
+        await this.handleVerification();
+        return;
+      }
+
+      // Submit form
+      try {
+        const submitBtn = this.driver.locator('button[name="login"], #loginbutton, [data-testid="royal_login_button"]').first();
+        if ((await submitBtn.count()) > 0 && (await submitBtn.isVisible().catch(() => false))) {
+          await submitBtn.click({ timeout: 5000 });
+        } else {
+          await this.driver.keyboard.press("Enter");
+        }
+      } catch {
+        await this.driver.keyboard.press("Enter");
+      }
+
+      // Wait up to 20 seconds for navigation, captcha, or 2FA to appear
+      const submitStart = Date.now();
+      let detectedVerification = false;
+
+      while (Date.now() - submitStart < 20_000) {
+        await this.sleep(1000);
+        if (this.isVerificationRequired() || (await this.hasCaptchaOnPage())) {
+          detectedVerification = true;
+          break;
+        }
+        const currentUrl = this.driver.url();
+        if (!currentUrl.includes("/login") && !currentUrl.startsWith(this.LOGIN_URL)) {
+          break;
+        }
+      }
+
+      // Check for 2-step verification or captcha after submit
+      if (detectedVerification || this.isVerificationRequired() || (await this.hasCaptchaOnPage())) {
+        await this.handleVerification();
+        return;
+      }
 
       if (this.driver.url().startsWith(this.LOGIN_URL) || this.driver.url().includes("/login")) {
+        // If in debug mode and still on login page, user might be solving a captcha or prompt
+        if (this.debug) {
+          this.logger.log("Still on login page after submitting credentials. Checking if verification or captcha is active...");
+          await this.handleVerification();
+          return;
+        }
+
         if (rep >= 2) {
-          // failed login even after third try.
           this.logger.log("Failed logging in after three attempts. Page is " + this.driver.url());
           const screenShotPath = path.resolve(PROJECT_ROOT, "login-error.png");
           await this.driver.screenshot({
@@ -381,6 +439,103 @@ class Gratulator {
       );
       await this.debugSleep(2000);
     }
+  }
+
+  /**
+   * Check if current URL indicates 2FA, checkpoint, or captcha challenge
+   */
+  isVerificationRequired() {
+    if (!this.driver) return false;
+    const url = this.driver.url();
+    return (
+      url.includes("two_step_verification") ||
+      url.includes("checkpoint") ||
+      url.includes("captcha") ||
+      url.includes("/auth/") ||
+      url.includes("challenge") ||
+      url.includes("recover")
+    );
+  }
+
+  /**
+   * Check if page DOM currently contains a visible captcha element, iframe, or security check
+   */
+  async hasCaptchaOnPage() {
+    if (!this.driver) return false;
+    try {
+      const captchaSelectors = [
+        'iframe[src*="captcha" i]',
+        'iframe[src*="arkose" i]',
+        'iframe[src*="funcaptcha" i]',
+        'iframe[src*="challenge" i]',
+        'iframe[title*="recaptcha" i]',
+        'iframe[title*="challenge" i]',
+        'iframe[title*="security" i]',
+        'img[src*="captcha" i]',
+        'input[name*="captcha" i]',
+        'input[id*="captcha" i]',
+        '#captcha',
+        '[data-testid*="captcha" i]',
+      ];
+      for (const sel of captchaSelectors) {
+        const el = await this.driver.$(sel);
+        if (el && (await el.isVisible().catch(() => false))) {
+          return true;
+        }
+      }
+
+      // Check text content on page for security check keywords
+      const pageText = await this.driver.evaluate(() => (document.body ? document.body.innerText : "")).catch(() => "");
+      if (
+        /security check|enter the text|unusual activity|solve the puzzle|confirm it's you|verify it's you|sicherheitsprüfung|sicherheitskontrolle/i.test(
+          pageText,
+        )
+      ) {
+        return true;
+      }
+
+      return false;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Wait for the user to solve captcha or approve 2FA (up to 15 minutes by default)
+   */
+  async handleVerification() {
+    const timeoutMinutes = parseInt(process.env.LOGIN_TIMEOUT_MINUTES || "15", 10) || 15;
+    const timeoutMs = timeoutMinutes * 60 * 1000;
+
+    this.logger.log(
+      "\n===========================================================\n" +
+      "ACTION REQUIRED: Captcha / 2-Step Verification detected!\n" +
+      "Current URL: " + this.driver.url() + "\n" +
+      `Please solve the captcha or approve verification in the browser window.\n` +
+      `Waiting up to ${timeoutMinutes} minutes for you to complete this...\n` +
+      "===========================================================\n"
+    );
+
+    const startTime = Date.now();
+    while (Date.now() - startTime < timeoutMs) {
+      await this.sleep(3000);
+
+      const url = this.driver.url();
+      const onVerificationPage = this.isVerificationRequired();
+      const hasCaptcha = await this.hasCaptchaOnPage();
+
+      if (!onVerificationPage && !hasCaptcha && !url.includes("/login") && !url.startsWith(this.LOGIN_URL)) {
+        this.logger.log("Verification completed successfully! Current URL: " + this.driver.url());
+        await this.debugSleep(3000);
+        return true;
+      }
+    }
+
+    const screenShotPath = path.resolve(PROJECT_ROOT, "verification-timeout.png");
+    await this.driver.screenshot({ path: screenShotPath, fullPage: true }).catch(() => {});
+    throw new Error(
+      `Timed out after ${timeoutMinutes} minutes waiting for captcha/verification. Saved screenshot to ${screenShotPath}`
+    );
   }
 
   /**
@@ -434,6 +589,13 @@ class Gratulator {
       ? path.resolve(this.config.userDataDir)
       : path.join(PROJECT_ROOT, "user_data");
 
+    const launchArgs = [
+      ...(this.config.args || []),
+      "--no-sandbox",
+      "--disable-setuid-sandbox",
+      "--disable-dev-shm-usage",
+    ];
+
     if (this.config.persistent) {
       fs.mkdirSync(userDataDir, { recursive: true });
       if (this.debug) {
@@ -445,6 +607,7 @@ class Gratulator {
         timeout: 180_000,
         locale: "en-US",
         viewport: this.debug ? { width: 1240, height: 980 } : undefined,
+        args: launchArgs,
       });
 
       // Apply addons to context if available
@@ -466,6 +629,7 @@ class Gratulator {
         headless: !this.debug,
         timeout: 180_000,
         locale: "en-US",
+        args: launchArgs,
       });
       this.context = await this.browser.newContext({
         locale: "en-US",
