@@ -303,6 +303,22 @@ class Gratulator {
       await this.startDriver();
     }
 
+    // Check if persistent session is already valid
+    if (rep === 0) {
+      try {
+        await this.driver.goto(this.BIRTHDAY_URL);
+        await this.driver.waitForLoadState("domcontentloaded").catch(() => {});
+        await this.randomSleep(1500);
+        const currentUrl = this.driver.url();
+        if (!currentUrl.includes("/login") && !currentUrl.startsWith(this.LOGIN_URL) && !this.isVerificationRequired() && !(await this.hasCaptchaOnPage())) {
+          this.logger.log("Already logged in with existing session (" + currentUrl + ").");
+          return;
+        }
+      } catch {
+        // Fall back to explicit login
+      }
+    }
+
     try {
       await this.driver.goto(this.LOGIN_URL);
       await this.driver.waitForLoadState("domcontentloaded").catch(() => {});
