@@ -22,7 +22,7 @@
     "eslint-config-oclif": "^7.1.7"
   },
   "engines": {
-    "node": ">=12.18.0"
+    "node": ">=22.0.0"
   },
   "type": "module",
   "files": [
