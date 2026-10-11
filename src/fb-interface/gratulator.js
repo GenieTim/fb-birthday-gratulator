@@ -337,6 +337,21 @@ class Gratulator {
         return;
       }
 
+      // If Facebook shows saved profile / "Continue as <user name>" button
+      const continueProfileBtn = this.driver.locator('div[role="button"]:has-text("Continue"), button:has-text("Continue"), [aria-label*="Continue as" i]').first();
+      if ((await continueProfileBtn.count()) > 0 && (await continueProfileBtn.isVisible().catch(() => false))) {
+        this.logger.log("Detected saved profile prompt ('Continue'). Clicking continue...");
+        await continueProfileBtn.click({ timeout: 5000 }).catch(() => {});
+        await this.randomSleep(2000);
+        await this.debugSleep(2000);
+      }
+
+      // Check if clicking continue took us away from login
+      if (!this.driver.url().startsWith(this.LOGIN_URL) && !this.driver.url().includes("/login")) {
+        this.logger.log("Successfully logged in via saved profile.");
+        return;
+      }
+
       // Fill email safely if editable
       const emailInput = this.driver.locator('input[name="email"], input[id="email"]').first();
       if ((await emailInput.count()) > 0) {
