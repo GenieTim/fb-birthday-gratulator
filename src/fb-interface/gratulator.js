@@ -20,7 +20,7 @@ class Gratulator {
   constructor(logger, configFilePath, debug = false) {
     this.debug = debug;
     this.logger = logger;
-    this.BIRTHDAY_URL = "https://www.facebook.com/events/birthdays/";
+    this.BIRTHDAY_URL = "https://www.facebook.com/events/birthdays";
     this.LOGIN_URL = "https://www.facebook.com/login";
     this.driver = null;
     this.context = null;
@@ -63,45 +63,54 @@ class Gratulator {
       // get list of all birthdaying friends
       const birthdayList = await this.getBirthdayList();
       let birthdayTitleDiv = birthdayList[0];
-      if (!birthdayTitleDiv) {
-        this.logger.warn("Did not find today's birthday card.");
-        return;
-      }
+      let birthdayDiv = null;
+      let textAreas = [];
 
-      await this.debugSleep(1500);
+      if (birthdayTitleDiv) {
+        await this.debugSleep(1500);
 
-      let birthdayDivs = await birthdayTitleDiv.$$("xpath=../div");
-      let depth = 0;
-      while (birthdayDivs.length <= 1 && depth < 5) {
-        // step up until we find multiple sibling divs or reach depth limit
-        depth++;
-        try {
-          const nextDivs = await (birthdayDivs[0] || birthdayTitleDiv).$$("xpath=../../div");
-          if (nextDivs && nextDivs.length > 0) {
-            birthdayDivs = nextDivs;
-          } else {
+        let birthdayDivs = await birthdayTitleDiv.$$("xpath=../div");
+        let depth = 0;
+        while (birthdayDivs.length <= 1 && depth < 5) {
+          // step up until we find multiple sibling divs or reach depth limit
+          depth++;
+          try {
+            const nextDivs = await (birthdayDivs[0] || birthdayTitleDiv).$$("xpath=../../div");
+            if (nextDivs && nextDivs.length > 0) {
+              birthdayDivs = nextDivs;
+            } else {
+              break;
+            }
+          } catch {
             break;
           }
-        } catch {
-          break;
+        }
+
+        birthdayDiv = birthdayDivs.length > 1 ? birthdayDivs[1] : (birthdayDivs[0] || birthdayTitleDiv);
+        textAreas = await birthdayDiv.$$('div[role="textbox"]');
+
+        // fallback if not found directly in sibling
+        if (textAreas.length === 0) {
+          textAreas = await birthdayTitleDiv.$$('xpath=..//div[@role="textbox"]');
         }
       }
 
-      let birthdayDiv = birthdayDivs.length > 1 ? birthdayDivs[1] : (birthdayDivs[0] || birthdayTitleDiv);
-      let textAreas = await birthdayDiv.$$('div[role="textbox"]');
-
-      // fallback if not found directly in sibling
-      if (textAreas.length === 0) {
-        textAreas = await birthdayTitleDiv.$$('xpath=..//div[@role="textbox"]');
-      }
       if (textAreas.length === 0) {
         textAreas = await this.driver.$$('div[role="textbox"]');
+      }
+
+      if (textAreas.length === 0 && !birthdayTitleDiv) {
+        this.logger.warn("Did not find today's birthday card or textboxes. Current URL: " + this.driver.url());
+        const screenShotPath = path.resolve(PROJECT_ROOT, "birthday-card-not-found.png");
+        await this.driver.screenshot({ path: screenShotPath, fullPage: true }).catch(() => {});
+        this.logger.log("Saved diagnostic screenshot to " + screenShotPath);
+        return { count: 0, reason: "no_card" };
       }
 
       // try to fetch the usernames
       let users = [];
       try {
-        const userElements = await this.findUsernames(birthdayDiv);
+        const userElements = birthdayDiv ? await this.findUsernames(birthdayDiv) : await this.findUsernames(this.driver);
         for (const el of userElements) {
           const name = await this.driver.evaluate((element) => element.textContent, el);
           if (name && name.trim()) {
@@ -124,8 +133,8 @@ class Gratulator {
       }
 
       if (textAreas.length === 0) {
-        this.logger.log("You have wished everyone already ;)");
-        return;
+        this.logger.log("You have wished everyone already ;) (or no birthdays today)");
+        return { count: 0, reason: "already_wished" };
       }
 
       if (users.length !== textAreas.length) {
@@ -139,6 +148,7 @@ class Gratulator {
       }
 
       // loop friends & wish them all the best
+      let successCount = 0;
       for (let index = 0; index < textAreas.length; index++) {
         const a = textAreas[index];
         let user = null;
@@ -173,6 +183,7 @@ class Gratulator {
           await this.debugSleep(2500);
 
           this.logger.log(util.format('Success: Congratulated "%s"', user || "Friend"));
+          successCount++;
         } catch (cardError) {
           this.logger.error(
             util.format('Failed to congratulate "%s": %s', user || "Friend", cardError.message),
@@ -184,6 +195,8 @@ class Gratulator {
         this.logger.log("Finished sending all birthday wishes.");
         await this.debugSleep(3000);
       }
+
+      return { count: successCount, reason: "completed" };
     } finally {
       await this.close();
     }
@@ -244,39 +257,58 @@ class Gratulator {
    * Get the list with all the birthday kids
    */
   async getBirthdayList() {
-    const currentUrl = this.driver.url();
+    let currentUrl = this.driver.url();
     if (!currentUrl.includes("/events/birthdays")) {
       await this.driver.goto(this.BIRTHDAY_URL);
       await this.driver.waitForLoadState("domcontentloaded").catch(() => {});
-      await this.randomSleep(2000);
-      await this.debugSleep(2000);
+      await this.sleep(2500);
+      currentUrl = this.driver.url();
     }
 
-    if (!this.driver.url().includes("/events/birthdays")) {
+    if (!currentUrl.includes("/events/birthdays")) {
       await this.driver.goto("https://www.facebook.com/events");
       await this.driver.waitForLoadState("domcontentloaded").catch(() => {});
-      await this.randomSleep(2000);
-      await this.debugSleep(2000);
+      await this.sleep(2000);
 
-      try {
-        const birthdayLink = this.driver.locator('a[href*="/events/birthdays"]').first();
-        if (await birthdayLink.count() > 0) {
-          await birthdayLink.click();
-          await this.driver.waitForLoadState("domcontentloaded").catch(() => {});
+      const birthdayLinkSelectors = [
+        'a[href*="/events/birthdays"]',
+        'a[href*="/birthdays"]',
+        'a[aria-label*="Birthdays" i]',
+        'a[aria-label*="Geburtstage" i]',
+        'a:has-text("Birthdays")',
+        'a:has-text("Geburtstage")',
+      ];
+
+      for (const sel of birthdayLinkSelectors) {
+        try {
+          const birthdayLink = this.driver.locator(sel).first();
+          if (await birthdayLink.isVisible({ timeout: 2000 }).catch(() => false)) {
+            await birthdayLink.click();
+            await this.driver.waitForLoadState("domcontentloaded").catch(() => {});
+            await this.sleep(2500);
+            break;
+          }
+        } catch {
+          // continue to next selector
         }
-      } catch (error) {
-        this.logger.warn("Could not navigate to birthdays from events page: " + error.message);
       }
-
-      await this.randomSleep(2000);
-      await this.debugSleep(2000);
     }
 
-    // Try finding "Today's birthdays" heading with different tag variations and quote styles (' vs ’)
+    // Wait up to 5s for birthday headings or textboxes to render in the DOM
+    try {
+      await this.driver.waitForSelector(
+        'xpath=//*[self::h1 or self::h2 or self::h3 or self::h4 or self::span][contains(., "Today\'s birthday") or contains(., "Today’s birthday") or contains(., "Today\'s Birthday") or contains(., "Today’s Birthday") or contains(., "Heutige Geburtstage") or contains(., "Geburtstage heute") or contains(., "Heutiger Geburtstag")] | div[role="textbox"]',
+        { timeout: 5000 },
+      );
+    } catch {
+      // Content may still be partially loaded
+    }
+
+    // Try finding "Today's birthdays" heading with different tag variations, quote styles, and languages (English, German)
     const headingSelectors = [
-      'xpath=//div[div[*[self::h1 or self::h2 or self::h3 or self::span][contains(text(), "Today\'s birthday") or contains(text(), "Today’s birthday") or contains(text(), "Today\'s Birthday") or contains(text(), "Today’s Birthday")]]]',
-      'xpath=//div[div[*[self::h1 or self::h2 or self::h3 or self::span]/*[contains(text(), "Today\'s birthday") or contains(text(), "Today’s birthday") or contains(text(), "Today\'s Birthday") or contains(text(), "Today’s Birthday")]]]',
-      'xpath=//div[contains(., "Today\'s birthdays") or contains(., "Today’s birthdays")]',
+      'xpath=//div[div[*[self::h1 or self::h2 or self::h3 or self::h4 or self::span][contains(., "Today\'s birthday") or contains(., "Today’s birthday") or contains(., "Today\'s Birthday") or contains(., "Today’s Birthday") or contains(., "Heutige Geburtstage") or contains(., "Geburtstage heute") or contains(., "Heutiger Geburtstag")]]]',
+      'xpath=//*[self::h1 or self::h2 or self::h3 or self::h4 or self::span][contains(., "Today\'s birthday") or contains(., "Today’s birthday") or contains(., "Today\'s Birthday") or contains(., "Today’s Birthday") or contains(., "Heutige Geburtstage") or contains(., "Geburtstage heute") or contains(., "Heutiger Geburtstag")]',
+      'xpath=//div[contains(., "Today\'s birthdays") or contains(., "Today’s birthdays") or contains(., "Heutige Geburtstage")]',
     ];
 
     for (const selector of headingSelectors) {
@@ -308,7 +340,7 @@ class Gratulator {
       try {
         await this.driver.goto(this.BIRTHDAY_URL);
         await this.driver.waitForLoadState("domcontentloaded").catch(() => {});
-        await this.randomSleep(1500);
+        await this.sleep(2500);
         const currentUrl = this.driver.url();
         if (!currentUrl.includes("/login") && !currentUrl.startsWith(this.LOGIN_URL) && !this.isVerificationRequired() && !(await this.hasCaptchaOnPage())) {
           this.logger.log("Already logged in with existing session (" + currentUrl + ").");

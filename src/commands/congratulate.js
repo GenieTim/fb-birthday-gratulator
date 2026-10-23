@@ -12,12 +12,18 @@ class FbBirthdayGratulatorCommand extends Command {
 
     try {
       const gratulator = new Gratulator(this, configFilePath, debug);
-      await gratulator.sendWishes();
+      const result = await gratulator.sendWishes();
+      if (result && result.count > 0) {
+        this.log(`Success: Congratulated ${result.count} birthday friend(s).`);
+      } else if (result && result.reason === "no_card") {
+        this.log("Completed: No today's birthday card or textboxes found.");
+      } else {
+        this.log("Success congratulating everyone.");
+      }
     } catch (error) {
       this.error(error, { exit: 2 });
     }
 
-    this.log("Success congratulating everyone.");
     this.exit(0);
   }
 }
