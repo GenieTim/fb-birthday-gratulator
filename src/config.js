@@ -126,7 +126,8 @@ export function loadConfig(configSource, userConfigDir) {
     process.env.FB_PASSWORD ||
     process.env.FACEBOOK_PASSWORD;
   if (envPassword) {
-    finalConfig.password = envPassword;
+    // If the password was escaped in .env or Coolify (e.g. \' instead of '), unescape it
+    finalConfig.password = envPassword.replace(/\\'/g, "'").replace(/\\"/g, '"');
   }
 
   const envWishes = parseEnvWishes(process.env.FB_WISHES);

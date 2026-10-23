@@ -265,31 +265,70 @@ class Gratulator {
       currentUrl = this.driver.url();
     }
 
-    if (!currentUrl.includes("/events/birthdays")) {
-      await this.driver.goto("https://www.facebook.com/events");
+    // Dismiss any popups like "Remember password"
+    try {
+      const okBtn = this.driver.locator('div[aria-label="OK" i], div[role="button"]:has-text("OK"), button:has-text("OK"), button:has-text("Not now")').first();
+      if (await okBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await okBtn.click();
+        await this.sleep(1000);
+      }
+    } catch {
+      // ignore
+    }
+
+    // Check if direct navigation showed "This page isn't available" or redirected away from birthdays
+    const pageText = await this.driver.evaluate(() => (document.body ? document.body.innerText : "")).catch(() => "");
+    const pageUnavailable = pageText.includes("This page isn't available") || pageText.includes("Diese Seite ist nicht verfügbar");
+
+    if (!currentUrl.includes("/events/birthdays") || pageUnavailable) {
+      // Fallback 1: Check home page for the birthdays widget
+      await this.driver.goto("https://www.facebook.com/");
       await this.driver.waitForLoadState("domcontentloaded").catch(() => {});
-      await this.sleep(2000);
+      await this.sleep(2500);
 
-      const birthdayLinkSelectors = [
-        'a[href*="/events/birthdays"]',
-        'a[href*="/birthdays"]',
-        'a[aria-label*="Birthdays" i]',
-        'a[aria-label*="Geburtstage" i]',
-        'a:has-text("Birthdays")',
-        'a:has-text("Geburtstage")',
-      ];
+      // Dismiss popup if present on home
+      try {
+        const okBtn = this.driver.locator('div[aria-label="OK" i], div[role="button"]:has-text("OK"), button:has-text("OK"), button:has-text("Not now")').first();
+        if (await okBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+          await okBtn.click();
+          await this.sleep(1000);
+        }
+      } catch {
+        // ignore
+      }
 
-      for (const sel of birthdayLinkSelectors) {
-        try {
-          const birthdayLink = this.driver.locator(sel).first();
-          if (await birthdayLink.isVisible({ timeout: 2000 }).catch(() => false)) {
-            await birthdayLink.click();
-            await this.driver.waitForLoadState("domcontentloaded").catch(() => {});
-            await this.sleep(2500);
-            break;
+      const homeBirthdayLink = this.driver.locator('a[href*="/events/birthdays"]').first();
+      if (await homeBirthdayLink.isVisible({ timeout: 3000 }).catch(() => false)) {
+        await homeBirthdayLink.click();
+        await this.driver.waitForLoadState("domcontentloaded").catch(() => {});
+        await this.sleep(2500);
+      } else {
+        // Fallback 2: Navigate to /events and look for sidebar birthdays link
+        await this.driver.goto("https://www.facebook.com/events");
+        await this.driver.waitForLoadState("domcontentloaded").catch(() => {});
+        await this.sleep(2000);
+
+        const birthdayLinkSelectors = [
+          'a[href*="/events/birthdays"]',
+          'a[href*="/birthdays"]',
+          'a[aria-label*="Birthdays" i]',
+          'a[aria-label*="Geburtstage" i]',
+          'a:has-text("Birthdays")',
+          'a:has-text("Geburtstage")',
+        ];
+
+        for (const sel of birthdayLinkSelectors) {
+          try {
+            const birthdayLink = this.driver.locator(sel).first();
+            if (await birthdayLink.isVisible({ timeout: 2000 }).catch(() => false)) {
+              await birthdayLink.click();
+              await this.driver.waitForLoadState("domcontentloaded").catch(() => {});
+              await this.sleep(2500);
+              break;
+            }
+          } catch {
+            // continue to next selector
           }
-        } catch {
-          // continue to next selector
         }
       }
     }
