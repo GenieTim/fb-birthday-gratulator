@@ -326,6 +326,42 @@ class Gratulator {
   }
 
   /**
+   * Check if the browser session is authenticated to Facebook
+   */
+  async isAuthenticated() {
+    if (!this.driver) return false;
+    const url = this.driver.url();
+    if (
+      url.includes("/login") ||
+      url.startsWith(this.LOGIN_URL) ||
+      this.isVerificationRequired() ||
+      (await this.hasCaptchaOnPage())
+    ) {
+      return false;
+    }
+
+    // Unauthenticated requests to birthdays get redirected to /events or show login modal
+    if (!url.includes("/events/birthdays")) {
+      return false;
+    }
+
+    // Check if login modal or credentials inputs are visible
+    try {
+      const loginIndicator = this.driver.locator(
+        'input[name="email"], input[id="email"], input[type="password"], div[role="dialog"] button:has-text("Log In"), div[role="dialog"] button:has-text("Anmelden")',
+      ).first();
+      const hasLoginPrompt = await loginIndicator.isVisible({ timeout: 1500 }).catch(() => false);
+      if (hasLoginPrompt) {
+        return false;
+      }
+    } catch {
+      // ignore
+    }
+
+    return true;
+  }
+
+  /**
    * Log in to facebook – try up to 3 times
    *
    * @param {number} rep how many attempts were taken to log in
@@ -340,10 +376,9 @@ class Gratulator {
       try {
         await this.driver.goto(this.BIRTHDAY_URL);
         await this.driver.waitForLoadState("domcontentloaded").catch(() => {});
-        await this.sleep(2500);
-        const currentUrl = this.driver.url();
-        if (!currentUrl.includes("/login") && !currentUrl.startsWith(this.LOGIN_URL) && !this.isVerificationRequired() && !(await this.hasCaptchaOnPage())) {
-          this.logger.log("Already logged in with existing session (" + currentUrl + ").");
+        await this.sleep(3000);
+        if (await this.isAuthenticated()) {
+          this.logger.log("Already logged in with existing session (" + this.driver.url() + ").");
           return;
         }
       } catch {
