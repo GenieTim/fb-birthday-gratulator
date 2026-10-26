@@ -20,7 +20,8 @@ class Gratulator {
   constructor(logger, configFilePath, debug = false) {
     this.debug = debug;
     this.logger = logger;
-    this.BIRTHDAY_URL = "https://www.facebook.com/events/birthdays";
+    this.BIRTHDAY_URL = "https://www.facebook.com/events/birthdays/?acontext=%7B%22ref%22%3A51%2C%22source%22%3A2%7D";
+    this.FALLBACK_BIRTHDAY_URL = "https://www.facebook.com/events/calendar/birthdays/";
     this.LOGIN_URL = "https://www.facebook.com/login";
     this.driver = null;
     this.context = null;
@@ -403,39 +404,33 @@ class Gratulator {
       !currentUrl.includes("/events/birthdays");
 
     if (pageUnavailable) {
-      this.logger.log("Direct birthdays URL blocked or redirected. Navigating via Facebook home bookmarks...");
-      await this.driver.goto("https://www.facebook.com/");
+      this.logger.log("Direct birthdays URL blocked or redirected. Navigating via fallback calendar birthdays URL...");
+      await this.driver.goto(this.FALLBACK_BIRTHDAY_URL);
       await this.driver.waitForLoadState("domcontentloaded").catch(() => {});
       await this.sleep(3000);
       await this.acceptCookies();
 
-      // Look for birthdays link on home page
-      const homeBirthdayLink = this.driver.locator('a[href*="/events/birthdays/"], a[href*="/events/birthdays"]').first();
-      const count = await homeBirthdayLink.count().catch(() => 0);
-      if (count > 0) {
-        const href = await homeBirthdayLink.getAttribute("href").catch(() => null);
-        if (href) {
-          const targetUrl = href.startsWith("http") ? href : new URL(href, "https://www.facebook.com").href;
-          await this.driver.goto(targetUrl);
-        } else {
-          await homeBirthdayLink.click().catch(() => {});
-        }
+      const newUrl = this.driver.url();
+      if (!newUrl.includes("/events/calendar/birthdays") && !newUrl.includes("/events/birthdays")) {
+        this.logger.log("Navigating via Facebook home bookmarks...");
+        await this.driver.goto("https://www.facebook.com/");
         await this.driver.waitForLoadState("domcontentloaded").catch(() => {});
         await this.sleep(3000);
-      } else {
-        // Fallback: check /events
-        await this.driver.goto("https://www.facebook.com/events");
-        await this.driver.waitForLoadState("domcontentloaded").catch(() => {});
-        await this.sleep(2000);
-        const eventsBirthdayLink = this.driver.locator('a[href*="birthdays"]').first();
-        if ((await eventsBirthdayLink.count().catch(() => 0)) > 0) {
-          const href = await eventsBirthdayLink.getAttribute("href").catch(() => null);
+        await this.acceptCookies();
+
+        // Look for birthdays link on home page
+        const homeBirthdayLink = this.driver.locator('a[href*="/events/birthdays/"], a[href*="/events/birthdays"]').first();
+        const count = await homeBirthdayLink.count().catch(() => 0);
+        if (count > 0) {
+          const href = await homeBirthdayLink.getAttribute("href").catch(() => null);
           if (href) {
             const targetUrl = href.startsWith("http") ? href : new URL(href, "https://www.facebook.com").href;
             await this.driver.goto(targetUrl);
-            await this.driver.waitForLoadState("domcontentloaded").catch(() => {});
-            await this.sleep(3000);
+          } else {
+            await homeBirthdayLink.click().catch(() => {});
           }
+          await this.driver.waitForLoadState("domcontentloaded").catch(() => {});
+          await this.sleep(3000);
         }
       }
     }
