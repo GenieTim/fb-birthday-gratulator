@@ -15,6 +15,11 @@ class FbBirthdayGratulatorCommand extends Command {
       const result = await gratulator.sendWishes();
       if (result && result.count > 0) {
         this.log(`Success: Congratulated ${result.count} birthday friend(s).`);
+        if (result.privateMessageOnly && result.privateMessageOnly.length > 0) {
+          this.log(`Notice: ${result.privateMessageOnly.length} friend(s) have birthday today, but timeline posts are disabled (Message only): ${result.privateMessageOnly.join(", ")}`);
+        }
+      } else if (result && result.reason === "private_message_only") {
+        this.log(`Completed: ${result.privateMessageOnly.length} friend(s) have birthday today, but timeline posts are disabled (Message only): ${result.privateMessageOnly.join(", ")}`);
       } else if (result && result.reason === "no_card") {
         this.log("Completed: No today's birthday card or textboxes found.");
       } else {

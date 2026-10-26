@@ -128,6 +128,21 @@ class Gratulator {
         users.push(specificName);
       }
 
+      // Detect all friends listed in Today's birthdays section
+      const allTodayFriends = await this.getTodayBirthdayNames();
+      const wishedUsers = users.filter(Boolean);
+      // Friends who have birthdays today, but no timeline textbox (e.g. timeline closed, Message only)
+      const privateMessageOnly = allTodayFriends.filter((name) => !wishedUsers.includes(name));
+
+      for (const name of privateMessageOnly) {
+        this.logger.log(
+          util.format(
+            'Notice: "%s" has a birthday today, but their timeline is closed for posts (Message only). You may want to message them privately.',
+            name,
+          ),
+        );
+      }
+
       if (this.debug) {
         this.logger.log(
           util.format(
@@ -140,6 +155,17 @@ class Gratulator {
       }
 
       if (textAreas.length === 0) {
+        if (privateMessageOnly.length > 0) {
+          this.logger.log(
+            util.format(
+              "Completed: Found %d friend(s) with birthday today, but timeline posts are disabled (%s).",
+              privateMessageOnly.length,
+              privateMessageOnly.join(", "),
+            ),
+          );
+          return { count: 0, reason: "private_message_only", privateMessageOnly };
+        }
+
         this.logger.log("You have wished everyone already ;) (or no birthdays today)");
         return { count: 0, reason: "already_wished" };
       }
@@ -200,7 +226,7 @@ class Gratulator {
         await this.debugSleep(3000);
       }
 
-      return { count: successCount, reason: "completed" };
+      return { count: successCount, reason: "completed", privateMessageOnly };
     } finally {
       await this.close();
     }
@@ -252,6 +278,44 @@ class Gratulator {
     }
 
     return fallbackUser || null;
+  }
+
+  /**
+   * Extract all friend names listed under Today's birthdays section
+   * @returns {Promise<string[]>}
+   */
+  async getTodayBirthdayNames() {
+    try {
+      return await this.driver.evaluate(() => {
+        const headings = Array.from(document.querySelectorAll("h1, h2, h3, h4, span"));
+        const todayHeading = headings.find((h) =>
+          /today's birthday|heutige geburtstage|geburtstage heute|heutiger geburtstag/i.test(h.innerText?.trim())
+        );
+        if (!todayHeading) return [];
+
+        let card = todayHeading.closest('div[class*="x"]');
+        for (let i = 0; i < 6; i++) {
+          if (card && card.parentElement && !/upcoming|recent|anstehend|kürzlich/i.test(card.parentElement.innerText || "")) {
+            card = card.parentElement;
+          }
+        }
+        if (!card) return [];
+
+        const friendLinks = Array.from(card.querySelectorAll('a[role="link"], a[href*="facebook.com/"]'));
+        const names = [];
+        for (const a of friendLinks) {
+          const text = a.innerText?.trim();
+          if (text && text.length > 2 && text.length < 60 && !/^(events|home|birthdays|notifications|message|nachricht|see all)/i.test(text)) {
+            if (!names.includes(text)) {
+              names.push(text);
+            }
+          }
+        }
+        return names;
+      });
+    } catch {
+      return [];
+    }
   }
 
   /**
@@ -329,36 +393,47 @@ class Gratulator {
       // ignore
     }
 
-    // Check if direct navigation showed "This page isn't available" or redirected away from birthdays
+    // Check if direct navigation showed "This page isn't available" or redirected away to events/discovery
+    const currentUrl = this.driver.url();
     const pageText = await this.driver.evaluate(() => (document.body ? document.body.innerText : "")).catch(() => "");
-    const pageUnavailable = pageText.includes("This page isn't available") || pageText.includes("Diese Seite ist nicht verfügbar");
+    const pageUnavailable =
+      pageText.includes("This page isn't available") ||
+      pageText.includes("Diese Seite ist nicht verfügbar") ||
+      currentUrl.includes("/events/discovery") ||
+      !currentUrl.includes("/events/birthdays");
 
     if (pageUnavailable) {
-      this.logger.warn("Birthdays page reported unavailable. Attempting navigation via events sidebar...");
-      await this.driver.goto("https://www.facebook.com/events");
+      this.logger.log("Direct birthdays URL blocked or redirected. Navigating via Facebook home bookmarks...");
+      await this.driver.goto("https://www.facebook.com/");
       await this.driver.waitForLoadState("domcontentloaded").catch(() => {});
-      await this.sleep(2000);
+      await this.sleep(3000);
+      await this.acceptCookies();
 
-      const birthdayLinkSelectors = [
-        'a[href*="/events/birthdays"]',
-        'a[href*="/birthdays"]',
-        'a[aria-label*="Birthdays" i]',
-        'a[aria-label*="Geburtstage" i]',
-        'a:has-text("Birthdays")',
-        'a:has-text("Geburtstage")',
-      ];
-
-      for (const sel of birthdayLinkSelectors) {
-        try {
-          const birthdayLink = this.driver.locator(sel).first();
-          if (await birthdayLink.isVisible({ timeout: 2000 }).catch(() => false)) {
-            await birthdayLink.click();
+      // Look for birthdays link on home page
+      const homeBirthdayLink = this.driver.locator('a[href*="/events/birthdays/"], a[href*="/events/birthdays"]').first();
+      const count = await homeBirthdayLink.count().catch(() => 0);
+      if (count > 0) {
+        const href = await homeBirthdayLink.getAttribute("href").catch(() => null);
+        if (href) {
+          await this.driver.goto(href);
+        } else {
+          await homeBirthdayLink.click().catch(() => {});
+        }
+        await this.driver.waitForLoadState("domcontentloaded").catch(() => {});
+        await this.sleep(3000);
+      } else {
+        // Fallback: check /events
+        await this.driver.goto("https://www.facebook.com/events");
+        await this.driver.waitForLoadState("domcontentloaded").catch(() => {});
+        await this.sleep(2000);
+        const eventsBirthdayLink = this.driver.locator('a[href*="birthdays"]').first();
+        if ((await eventsBirthdayLink.count().catch(() => 0)) > 0) {
+          const href = await eventsBirthdayLink.getAttribute("href").catch(() => null);
+          if (href) {
+            await this.driver.goto(href);
             await this.driver.waitForLoadState("domcontentloaded").catch(() => {});
-            await this.sleep(2500);
-            break;
+            await this.sleep(3000);
           }
-        } catch {
-          // continue to next selector
         }
       }
     }
