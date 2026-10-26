@@ -69,34 +69,34 @@ class Gratulator {
       if (birthdayTitleDiv) {
         await this.debugSleep(1500);
 
-        let birthdayDivs = await birthdayTitleDiv.$$("xpath=../div");
-        let depth = 0;
-        while (birthdayDivs.length <= 1 && depth < 5) {
-          // step up until we find multiple sibling divs or reach depth limit
-          depth++;
-          try {
-            const nextDivs = await (birthdayDivs[0] || birthdayTitleDiv).$$("xpath=../../div");
-            if (nextDivs && nextDivs.length > 0) {
-              birthdayDivs = nextDivs;
-            } else {
-              break;
-            }
-          } catch {
+        // Climb ancestors of birthdayTitleDiv to find the container holding today's birthday cards & textboxes
+        let currentCard = birthdayTitleDiv;
+        for (let depth = 0; depth < 6; depth++) {
+          const found = await currentCard.$$('div[role="textbox"]');
+          if (found.length > 0) {
+            birthdayDiv = currentCard;
+            textAreas = found;
             break;
           }
-        }
-
-        birthdayDiv = birthdayDivs.length > 1 ? birthdayDivs[1] : (birthdayDivs[0] || birthdayTitleDiv);
-        textAreas = await birthdayDiv.$$('div[role="textbox"]');
-
-        // fallback if not found directly in sibling
-        if (textAreas.length === 0) {
-          textAreas = await birthdayTitleDiv.$$('xpath=..//div[@role="textbox"]');
+          const parent = await currentCard.$("xpath=..");
+          if (!parent) break;
+          currentCard = parent;
         }
       }
 
+      // If textboxes weren't found in ancestors, query directly on the birthday page
       if (textAreas.length === 0) {
         textAreas = await this.driver.$$('div[role="textbox"]');
+      }
+
+      // Wait briefly if textboxes might still be rendering
+      if (textAreas.length === 0) {
+        try {
+          await this.driver.waitForSelector('div[role="textbox"]', { timeout: 3000 });
+          textAreas = await this.driver.$$('div[role="textbox"]');
+        } catch {
+          // not found
+        }
       }
 
       if (textAreas.length === 0 && !birthdayTitleDiv) {
@@ -107,18 +107,25 @@ class Gratulator {
         return { count: 0, reason: "no_card" };
       }
 
-      // try to fetch the usernames
-      let users = [];
+      // Fetch fallback usernames from container or driver
+      let fallbackUsers = [];
       try {
         const userElements = birthdayDiv ? await this.findUsernames(birthdayDiv) : await this.findUsernames(this.driver);
         for (const el of userElements) {
           const name = await this.driver.evaluate((element) => element.textContent, el);
           if (name && name.trim()) {
-            users.push(name.trim());
+            fallbackUsers.push(name.trim());
           }
         }
       } catch (error) {
         this.logger.error("Could not extract usernames: " + error.message);
+      }
+
+      // Resolve usernames for each textbox individually
+      let users = [];
+      for (let i = 0; i < textAreas.length; i++) {
+        const specificName = await this.extractUsernameForTextbox(textAreas[i], fallbackUsers[i]);
+        users.push(specificName);
       }
 
       if (this.debug) {
@@ -126,7 +133,7 @@ class Gratulator {
           util.format(
             "Found %d textbox(es) and %d username(s).",
             textAreas.length,
-            users.length,
+            users.filter(Boolean).length,
           ),
         );
         await this.debugSleep(2000);
@@ -151,10 +158,7 @@ class Gratulator {
       let successCount = 0;
       for (let index = 0; index < textAreas.length; index++) {
         const a = textAreas[index];
-        let user = null;
-        if (users.length === textAreas.length) {
-          user = users[index];
-        }
+        let user = users[index] || null;
 
         let wish = await this.getWish(user);
         this.logger.log(util.format('Congratulating "%s" with "%s"', user || "Friend", wish));
@@ -200,6 +204,54 @@ class Gratulator {
     } finally {
       await this.close();
     }
+  }
+
+  /**
+   * Extract username for a specific textbox (from aria-label, ancestor row, or fallback)
+   *
+   * @param {ElementHandle} textArea
+   * @param {string|null} fallbackUser
+   * @returns {Promise<string|null>}
+   */
+  async extractUsernameForTextbox(textArea, fallbackUser = null) {
+    try {
+      // 1. Check aria-label for friend name
+      const ariaLabel = await textArea.getAttribute("aria-label").catch(() => null);
+      if (ariaLabel) {
+        // German patterns: "Schreibe in die Chronik von <Name>", "Schreibe an <Name>"
+        const deMatch = ariaLabel.match(/schreibe\s+(?:in\s+die\s+chronik\s+von|etwas\s+in\s+die\s+chronik\s+von|etwas\s+für|an)\s+([^.…]+)/i);
+        if (deMatch && deMatch[1].trim()) {
+          return deMatch[1].trim();
+        }
+        // English patterns: "Write on <Name>'s timeline", "Write something to <Name>"
+        const enMatch = ariaLabel.match(/write\s+(?:something\s+)?(?:on|to)\s+(.+?)(?:'s|\s+timeline|$|\.)/i);
+        if (enMatch && enMatch[1].trim()) {
+          return enMatch[1].trim();
+        }
+      }
+
+      // 2. Look in the row / card container of this textbox
+      const nameSelectors = [
+        'xpath=ancestor::div[.//a[@role="link" or contains(@href, "facebook.com")]][1]//a[@role="link" or contains(@href, "facebook.com")]//span[dir="auto"]',
+        'xpath=ancestor::div[.//h3 or .//h4][1]//*[self::h3 or self::h4]//span',
+        'xpath=ancestor::div[.//h3 or .//h4][1]//*[self::h3 or self::h4]',
+        'xpath=ancestor::div[.//a][1]//a[not(@role="button")]//span',
+      ];
+
+      for (const sel of nameSelectors) {
+        const el = await textArea.$(sel).catch(() => null);
+        if (el) {
+          const text = await this.driver.evaluate((e) => e.textContent, el).catch(() => null);
+          if (text && text.trim()) {
+            return text.trim();
+          }
+        }
+      }
+    } catch {
+      // ignore
+    }
+
+    return fallbackUser || null;
   }
 
   /**
@@ -257,18 +309,19 @@ class Gratulator {
    * Get the list with all the birthday kids
    */
   async getBirthdayList() {
-    let currentUrl = this.driver.url();
-    if (!currentUrl.includes("/events/birthdays")) {
+    if (!this.driver.url().includes("/events/birthdays")) {
       await this.driver.goto(this.BIRTHDAY_URL);
       await this.driver.waitForLoadState("domcontentloaded").catch(() => {});
       await this.sleep(2500);
-      currentUrl = this.driver.url();
     }
 
-    // Dismiss any popups like "Remember password"
+    // Dismiss any popups or cookie dialogs
+    await this.acceptCookies();
     try {
-      const okBtn = this.driver.locator('div[aria-label="OK" i], div[role="button"]:has-text("OK"), button:has-text("OK"), button:has-text("Not now")').first();
-      if (await okBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+      const okBtn = this.driver.locator(
+        'div[aria-label="OK" i], div[role="button"]:has-text("OK"), button:has-text("OK"), button:has-text("Not now"), button:has-text("Jetzt nicht"), button:has-text("Close"), div[aria-label="Close" i], div[aria-label="Schließen" i]'
+      ).first();
+      if (await okBtn.isVisible({ timeout: 1500 }).catch(() => false)) {
         await okBtn.click();
         await this.sleep(1000);
       }
@@ -280,55 +333,32 @@ class Gratulator {
     const pageText = await this.driver.evaluate(() => (document.body ? document.body.innerText : "")).catch(() => "");
     const pageUnavailable = pageText.includes("This page isn't available") || pageText.includes("Diese Seite ist nicht verfügbar");
 
-    if (!currentUrl.includes("/events/birthdays") || pageUnavailable) {
-      // Fallback 1: Check home page for the birthdays widget
-      await this.driver.goto("https://www.facebook.com/");
+    if (pageUnavailable) {
+      this.logger.warn("Birthdays page reported unavailable. Attempting navigation via events sidebar...");
+      await this.driver.goto("https://www.facebook.com/events");
       await this.driver.waitForLoadState("domcontentloaded").catch(() => {});
-      await this.sleep(2500);
+      await this.sleep(2000);
 
-      // Dismiss popup if present on home
-      try {
-        const okBtn = this.driver.locator('div[aria-label="OK" i], div[role="button"]:has-text("OK"), button:has-text("OK"), button:has-text("Not now")').first();
-        if (await okBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
-          await okBtn.click();
-          await this.sleep(1000);
-        }
-      } catch {
-        // ignore
-      }
+      const birthdayLinkSelectors = [
+        'a[href*="/events/birthdays"]',
+        'a[href*="/birthdays"]',
+        'a[aria-label*="Birthdays" i]',
+        'a[aria-label*="Geburtstage" i]',
+        'a:has-text("Birthdays")',
+        'a:has-text("Geburtstage")',
+      ];
 
-      const homeBirthdayLink = this.driver.locator('a[href*="/events/birthdays"]').first();
-      if (await homeBirthdayLink.isVisible({ timeout: 3000 }).catch(() => false)) {
-        await homeBirthdayLink.click();
-        await this.driver.waitForLoadState("domcontentloaded").catch(() => {});
-        await this.sleep(2500);
-      } else {
-        // Fallback 2: Navigate to /events and look for sidebar birthdays link
-        await this.driver.goto("https://www.facebook.com/events");
-        await this.driver.waitForLoadState("domcontentloaded").catch(() => {});
-        await this.sleep(2000);
-
-        const birthdayLinkSelectors = [
-          'a[href*="/events/birthdays"]',
-          'a[href*="/birthdays"]',
-          'a[aria-label*="Birthdays" i]',
-          'a[aria-label*="Geburtstage" i]',
-          'a:has-text("Birthdays")',
-          'a:has-text("Geburtstage")',
-        ];
-
-        for (const sel of birthdayLinkSelectors) {
-          try {
-            const birthdayLink = this.driver.locator(sel).first();
-            if (await birthdayLink.isVisible({ timeout: 2000 }).catch(() => false)) {
-              await birthdayLink.click();
-              await this.driver.waitForLoadState("domcontentloaded").catch(() => {});
-              await this.sleep(2500);
-              break;
-            }
-          } catch {
-            // continue to next selector
+      for (const sel of birthdayLinkSelectors) {
+        try {
+          const birthdayLink = this.driver.locator(sel).first();
+          if (await birthdayLink.isVisible({ timeout: 2000 }).catch(() => false)) {
+            await birthdayLink.click();
+            await this.driver.waitForLoadState("domcontentloaded").catch(() => {});
+            await this.sleep(2500);
+            break;
           }
+        } catch {
+          // continue to next selector
         }
       }
     }
@@ -368,7 +398,7 @@ class Gratulator {
    * Check if the browser session is authenticated to Facebook
    */
   async isAuthenticated() {
-    if (!this.driver) return false;
+    if (!this.driver || !this.context) return false;
     const url = this.driver.url();
     if (
       url.includes("/login") ||
@@ -379,15 +409,40 @@ class Gratulator {
       return false;
     }
 
-    // Unauthenticated requests to birthdays get redirected to /events or show login modal
-    if (!url.includes("/events/birthdays")) {
+    // 1. Check cookies: Facebook sets `c_user` cookie for authenticated sessions
+    let hasCUser = false;
+    try {
+      const cookies = await this.context.cookies();
+      hasCUser = cookies.some((c) => c.name === "c_user" && c.value && c.value !== "0");
+    } catch {
+      // ignore
+    }
+
+    // 2. Check for logged-in profile indicators
+    let hasProfileIndicator = false;
+    try {
+      const profileIndicator = this.driver.locator(
+        'div[aria-label="Your profile" i], div[aria-label="Dein Profil" i], [aria-label*="Account controls" i], [aria-label*="Kontoverwaltung" i], div[role="navigation"] a[href*="/me"], a[href*="/me/"]',
+      ).first();
+      hasProfileIndicator = await profileIndicator.isVisible({ timeout: 1500 }).catch(() => false);
+    } catch {
+      // ignore
+    }
+
+    // If profile indicator is visible, session is definitely authenticated
+    if (hasProfileIndicator) {
+      return true;
+    }
+
+    // If no c_user cookie exists, the session is NOT authenticated
+    if (!hasCUser) {
       return false;
     }
 
-    // Check if login modal or credentials inputs are visible
+    // 3. Check for obvious unauthenticated indicators (login forms / prompts)
     try {
       const loginIndicator = this.driver.locator(
-        'input[name="email"], input[id="email"], input[type="password"], div[role="dialog"] button:has-text("Log In"), div[role="dialog"] button:has-text("Anmelden")',
+        'input[name="email"], input[id="email"], input[type="password"], a[href*="/login"], div[role="dialog"] button:has-text("Log In"), div[role="dialog"] button:has-text("Anmelden")',
       ).first();
       const hasLoginPrompt = await loginIndicator.isVisible({ timeout: 1500 }).catch(() => false);
       if (hasLoginPrompt) {
@@ -416,10 +471,12 @@ class Gratulator {
         await this.driver.goto(this.BIRTHDAY_URL);
         await this.driver.waitForLoadState("domcontentloaded").catch(() => {});
         await this.sleep(3000);
+        await this.acceptCookies();
         if (await this.isAuthenticated()) {
           this.logger.log("Already logged in with existing session (" + this.driver.url() + ").");
           return;
         }
+        this.logger.log("Session not authenticated on birthdays page. Navigating to login...");
       } catch {
         // Fall back to explicit login
       }
@@ -679,8 +736,8 @@ class Gratulator {
    * Accept or dismiss cookie consent banner if present
    */
   async acceptCookies() {
-    await this.randomSleep(1000);
-    await this.debugSleep(1500);
+    await this.randomSleep(500);
+    await this.debugSleep(1000);
 
     const cookieBtnSelectors = [
       "[data-cookiebanner='accept_button']",
@@ -689,11 +746,16 @@ class Gratulator {
       "button[data-cookiebanner='accept_button']",
       "[aria-label='Allow all cookies']",
       "[aria-label='Allow essential and optional cookies']",
+      "[aria-label='Alle Cookies erlauben']",
+      "[aria-label='Erforderliche und optionale Cookies erlauben']",
       "[aria-label='Accept all']",
       "[aria-label='Only allow essential cookies']",
       "button[name='accept_cookies']",
-      "xpath=//button[contains(., 'Allow all cookies') or contains(., 'Accept all') or contains(., 'Allow essential') or contains(., 'Alle Cookies gestatten') or contains(., 'Nur essenzielle Cookies')]",
-      "xpath=//div[@role='button'][contains(., 'Allow all cookies') or contains(., 'Accept all') or contains(., 'Allow essential')]",
+      "button:has-text('Allow all cookies')",
+      "button:has-text('Alle Cookies erlauben')",
+      "button:has-text('Erforderliche und optionale Cookies erlauben')",
+      "xpath=//button[contains(., 'Allow all cookies') or contains(., 'Accept all') or contains(., 'Allow essential') or contains(., 'Alle Cookies gestatten') or contains(., 'Alle Cookies erlauben') or contains(., 'Nur essenzielle Cookies') or contains(., 'Erforderliche und optionale Cookies erlauben')]",
+      "xpath=//div[@role='button'][contains(., 'Allow all cookies') or contains(., 'Accept all') or contains(., 'Allow essential') or contains(., 'Alle Cookies gestatten') or contains(., 'Alle Cookies erlauben')]",
     ];
 
     for (const cookieBtnSelector of cookieBtnSelectors) {
