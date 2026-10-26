@@ -415,7 +415,8 @@ class Gratulator {
       if (count > 0) {
         const href = await homeBirthdayLink.getAttribute("href").catch(() => null);
         if (href) {
-          await this.driver.goto(href);
+          const targetUrl = href.startsWith("http") ? href : new URL(href, "https://www.facebook.com").href;
+          await this.driver.goto(targetUrl);
         } else {
           await homeBirthdayLink.click().catch(() => {});
         }
@@ -430,7 +431,8 @@ class Gratulator {
         if ((await eventsBirthdayLink.count().catch(() => 0)) > 0) {
           const href = await eventsBirthdayLink.getAttribute("href").catch(() => null);
           if (href) {
-            await this.driver.goto(href);
+            const targetUrl = href.startsWith("http") ? href : new URL(href, "https://www.facebook.com").href;
+            await this.driver.goto(targetUrl);
             await this.driver.waitForLoadState("domcontentloaded").catch(() => {});
             await this.sleep(3000);
           }
