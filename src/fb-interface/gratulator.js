@@ -26,6 +26,7 @@ class Gratulator {
     this.driver = null;
     this.context = null;
     this.browser = null;
+    this._pageCrashed = false;
 
     const { config, source } = typeof configFilePath === "object" && configFilePath !== null && !Array.isArray(configFilePath) && configFilePath.username
       ? { config: configFilePath, source: "in-memory object" }
@@ -51,8 +52,12 @@ class Gratulator {
 
   /**
    * Main logic in order to send wishes to all friends with today birthday
+   *
+   * @param {number} attempt Retry attempt counter for page crash recovery
    */
-  async sendWishes() {
+  async sendWishes(attempt = 0) {
+    let successCount = 0;
+    let shouldRetry;
     try {
       // startup
       await this.login();
@@ -182,7 +187,6 @@ class Gratulator {
       }
 
       // loop friends & wish them all the best
-      let successCount = 0;
       for (let index = 0; index < textAreas.length; index++) {
         const a = textAreas[index];
         let user = users[index] || null;
@@ -228,8 +232,19 @@ class Gratulator {
       }
 
       return { count: successCount, reason: "completed", privateMessageOnly };
+    } catch (error) {
+      if (attempt === 0 && successCount === 0 && this.isPageCrashError(error)) {
+        this.logger.warn("Browser page crashed (" + error.message + "), retrying once...");
+        shouldRetry = true;
+      } else {
+        throw error;
+      }
     } finally {
       await this.close();
+    }
+
+    if (shouldRetry) {
+      return this.sendWishes(1);
     }
   }
 
@@ -375,8 +390,7 @@ class Gratulator {
    */
   async getBirthdayList() {
     if (!this.driver.url().includes("/events/birthdays")) {
-      await this.driver.goto(this.BIRTHDAY_URL);
-      await this.driver.waitForLoadState("domcontentloaded").catch(() => {});
+      await this.gotoWithRecovery(this.BIRTHDAY_URL);
       await this.sleep(2500);
     }
 
@@ -405,16 +419,14 @@ class Gratulator {
 
     if (pageUnavailable) {
       this.logger.log("Direct birthdays URL blocked or redirected. Navigating via fallback calendar birthdays URL...");
-      await this.driver.goto(this.FALLBACK_BIRTHDAY_URL);
-      await this.driver.waitForLoadState("domcontentloaded").catch(() => {});
+      await this.gotoWithRecovery(this.FALLBACK_BIRTHDAY_URL);
       await this.sleep(3000);
       await this.acceptCookies();
 
       const newUrl = this.driver.url();
       if (!newUrl.includes("/events/calendar/birthdays") && !newUrl.includes("/events/birthdays")) {
         this.logger.log("Navigating via Facebook home bookmarks...");
-        await this.driver.goto("https://www.facebook.com/");
-        await this.driver.waitForLoadState("domcontentloaded").catch(() => {});
+        await this.gotoWithRecovery("https://www.facebook.com/");
         await this.sleep(3000);
         await this.acceptCookies();
 
@@ -425,11 +437,11 @@ class Gratulator {
           const href = await homeBirthdayLink.getAttribute("href").catch(() => null);
           if (href) {
             const targetUrl = href.startsWith("http") ? href : new URL(href, "https://www.facebook.com").href;
-            await this.driver.goto(targetUrl);
+            await this.gotoWithRecovery(targetUrl);
           } else {
             await homeBirthdayLink.click().catch(() => {});
+            await this.driver.waitForLoadState("domcontentloaded").catch(() => {});
           }
-          await this.driver.waitForLoadState("domcontentloaded").catch(() => {});
           await this.sleep(3000);
         }
       }
@@ -540,8 +552,7 @@ class Gratulator {
     // Check if persistent session is already valid
     if (rep === 0) {
       try {
-        await this.driver.goto(this.BIRTHDAY_URL);
-        await this.driver.waitForLoadState("domcontentloaded").catch(() => {});
+        await this.gotoWithRecovery(this.BIRTHDAY_URL);
         await this.sleep(3000);
         await this.acceptCookies();
         if (await this.isAuthenticated()) {
@@ -549,23 +560,27 @@ class Gratulator {
           return;
         }
         this.logger.log("Session not authenticated on birthdays page. Navigating to login...");
-      } catch {
-        // Fall back to explicit login
+      } catch (error) {
+        this.logger.warn("Initial session check failed, falling back to login: " + error.message);
+        if (this.isPageCrashError(error)) {
+          await this.recoverPage();
+        }
       }
     }
 
     try {
-      await this.driver.goto(this.LOGIN_URL);
-      await this.driver.waitForLoadState("domcontentloaded").catch(() => {});
+      await this.gotoWithRecovery(this.LOGIN_URL);
       await this.debugSleep(2000);
     } catch (error) {
-      this.logger.warn("Failed to go to login page. Am on " + this.driver.url());
+      this.logger.warn("Failed to go to login page. Am on " + (this.driver ? this.driver.url() : "unknown"));
       const screenShotPath = path.resolve(PROJECT_ROOT, "login-nav-error.png");
-      await this.driver.screenshot({ path: screenShotPath, fullPage: true }).catch(() => {});
+      if (this.driver && !this._pageCrashed) {
+        await this.driver.screenshot({ path: screenShotPath, fullPage: true }).catch(() => {});
+      }
       this.logger.error(error);
       throw new Error(
         "Failed navigating to login. URL is still " +
-          this.driver.url() +
+          (this.driver ? this.driver.url() : "unknown") +
           ". Took screenshot to " +
           screenShotPath,
         { cause: error },
@@ -849,6 +864,83 @@ class Gratulator {
   }
 
   /**
+   * Attach crash listener to a Playwright page
+   *
+   * @param {import('playwright').Page} page
+   */
+  attachPageListeners(page) {
+    this._pageCrashed = false;
+    if (page && typeof page.on === "function") {
+      page.on("crash", () => {
+        this._pageCrashed = true;
+        this.logger.warn("Browser page crashed.");
+      });
+    }
+  }
+
+  /**
+   * Check whether an error indicates a crashed or closed Playwright page/browser
+   *
+   * @param {unknown} error
+   * @returns {boolean}
+   */
+  isPageCrashError(error) {
+    const msg = error?.message || String(error || "");
+    return (
+      this._pageCrashed ||
+      /page crashed|target crashed|target page, context or browser has been closed|browser has been closed/i.test(msg)
+    );
+  }
+
+  /**
+   * Recover from a crashed page by opening a fresh page or restarting the driver
+   */
+  async recoverPage() {
+    this.logger.warn("Recovering from crashed browser page...");
+    try {
+      if (this.driver && !this.driver.isClosed()) {
+        await this.driver.close().catch(() => {});
+      }
+      if (this.context) {
+        this.driver = await this.context.newPage();
+        this.attachPageListeners(this.driver);
+        if (this.debug) {
+          await this.driver.setViewportSize({ width: 1240, height: 980 }).catch(() => {});
+        }
+        return;
+      }
+    } catch {
+      // Context or browser is unusable; fall back to full driver restart
+    }
+
+    await this.close();
+    await this.startDriver();
+  }
+
+  /**
+   * Navigate to a URL with automatic recovery if the page crashes
+   *
+   * @param {string} url
+   * @param {object} options
+   */
+  async gotoWithRecovery(url, options = {}) {
+    const navOptions = { waitUntil: "domcontentloaded", ...options };
+    if (this._pageCrashed || !this.driver || this.driver.isClosed()) {
+      await this.recoverPage();
+    }
+
+    try {
+      await this.driver.goto(url, navOptions);
+    } catch (error) {
+      if (!this.isPageCrashError(error)) {
+        throw error;
+      }
+      await this.recoverPage();
+      await this.driver.goto(url, navOptions);
+    }
+  }
+
+  /**
    * Start the Playwright browser
    */
   async startDriver() {
@@ -865,10 +957,22 @@ class Gratulator {
       "--no-sandbox",
       "--disable-setuid-sandbox",
       "--disable-dev-shm-usage",
+      "--disable-gpu",
+      "--no-first-run",
+      "--disable-extensions",
+      "--disable-sync",
+      "--disable-background-networking",
+      "--disable-default-apps",
+      "--disable-backgrounding-occluded-windows",
+      "--disable-renderer-backgrounding",
+      "--js-flags=--max-old-space-size=384",
     ];
 
     if (this.config.persistent) {
       fs.mkdirSync(userDataDir, { recursive: true });
+      for (const lockFile of ["SingletonLock", "SingletonSocket", "SingletonCookie"]) {
+        fs.rmSync(path.join(userDataDir, lockFile), { force: true });
+      }
       if (this.debug) {
         this.logger.log("Launching persistent context in: " + userDataDir);
       }
@@ -922,6 +1026,7 @@ class Gratulator {
     try {
       const pages = this.context.pages();
       this.driver = pages.length > 0 ? pages[0] : await this.context.newPage();
+      this.attachPageListeners(this.driver);
     } catch (error) {
       this.logger.error("Failed opening page: " + error.message);
       throw error;
@@ -931,9 +1036,6 @@ class Gratulator {
       await this.driver.setViewportSize({ width: 1240, height: 980 }).catch(() => {});
       await this.debugSleep(1500);
     }
-
-    await this.driver.goto(this.BIRTHDAY_URL);
-    await this.debugSleep(2000);
   }
 
   /**
